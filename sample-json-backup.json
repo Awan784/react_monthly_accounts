@@ -1,0 +1,408 @@
+{
+  "daily": [],
+  "brands": [
+    {
+      "id": "mokky03jyccaaf",
+      "date": "2026-01-31",
+      "month": "January",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "brand": "Temu",
+      "contact": "",
+      "product": "",
+      "amount": 1291.36,
+      "due": "",
+      "status": "Paid",
+      "usage": "Organic Only",
+      "contract": null,
+      "notes": ""
+    },
+    {
+      "id": "mokl0shcmosw82",
+      "date": "2026-03-31",
+      "month": "March",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "brand": "Multiple Brands",
+      "contact": "",
+      "product": "",
+      "amount": 3161.86,
+      "due": "",
+      "status": "Paid",
+      "usage": "Organic Only",
+      "contract": null,
+      "notes": ""
+    },
+    {
+      "id": "mokl32pugnyx8e",
+      "date": "2026-04-29",
+      "month": "April",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "brand": "Temu",
+      "contact": "",
+      "product": "",
+      "amount": 1615.53,
+      "due": "",
+      "status": "Paid",
+      "usage": "Organic Only",
+      "contract": null,
+      "notes": ""
+    },
+    {
+      "id": "mokl462nol0qw0",
+      "date": "2026-04-29",
+      "month": "April",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "brand": "Temu",
+      "contact": "Tina",
+      "product": "",
+      "amount": 960,
+      "due": "",
+      "status": "Pending",
+      "usage": "Organic Only",
+      "contract": null,
+      "notes": "8 Existing Videos"
+    },
+    {
+      "id": "mokl4sbqdmork5",
+      "date": "2026-04-29",
+      "month": "April",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "brand": "Glacier Fresh",
+      "contact": "",
+      "product": "Water Filtration System",
+      "amount": 600,
+      "due": "",
+      "status": "Pending",
+      "usage": "Organic Only",
+      "contract": null,
+      "notes": "2 videos"
+    }
+  ],
+  "expenses": [],
+  "external": [
+    {
+      "id": "mokl5p1nf4szff",
+      "date": "2026-01-31",
+      "month": "January",
+      "year": 2026,
+      "source": "NARS",
+      "amount": 7402.06
+    },
+    {
+      "id": "mokl696xdsu6vk",
+      "date": "2026-02-28",
+      "month": "February",
+      "year": 2026,
+      "source": "NARS",
+      "amount": 7402.06
+    },
+    {
+      "id": "mokl6kllzb1ixw",
+      "date": "2026-03-31",
+      "month": "March",
+      "year": 2026,
+      "source": "Strada",
+      "amount": 983.76
+    }
+  ],
+  "monthlyAdjustments": [
+    {
+      "id": "mokkwdmarrikda",
+      "month": "January",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "amount": 6438.99,
+      "gmv": 68119.12,
+      "videos": 100,
+      "items": 1406,
+      "notes": ""
+    },
+    {
+      "id": "mokkxkczv4w7ie",
+      "month": "January",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFindsMore",
+      "amount": 206.52,
+      "gmv": 1700,
+      "videos": 16,
+      "items": 47,
+      "notes": ""
+    },
+    {
+      "id": "mokkyvx1zjile4",
+      "month": "February",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "amount": 7475.66,
+      "gmv": 79387.11,
+      "videos": 71,
+      "items": 1850,
+      "notes": ""
+    },
+    {
+      "id": "mokkzezlj7lsy2",
+      "month": "February",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFindsMore",
+      "amount": 890.08,
+      "gmv": 7100,
+      "videos": 27,
+      "items": 123,
+      "notes": ""
+    },
+    {
+      "id": "mokl09cn053mka",
+      "month": "March",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "amount": 11295.33,
+      "gmv": 110237.72,
+      "videos": 38,
+      "items": 2383,
+      "notes": ""
+    },
+    {
+      "id": "mokl1ghnfdesv0",
+      "month": "March",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFindsMore",
+      "amount": 3900,
+      "gmv": 35200,
+      "videos": 29,
+      "items": 507,
+      "notes": ""
+    },
+    {
+      "id": "mokl25g2fw10ar",
+      "month": "April",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFinds",
+      "amount": 12198.47,
+      "gmv": 115822.79,
+      "videos": 42,
+      "items": 2442,
+      "notes": ""
+    },
+    {
+      "id": "mokl2hrmvafrz4",
+      "month": "April",
+      "year": 2026,
+      "platform": "TikTok Shop",
+      "account": "DynamiteFindsMore",
+      "amount": 1900,
+      "gmv": 16700,
+      "videos": 14,
+      "items": 262,
+      "notes": ""
+    },
+    {
+      "id": "mokl7i9idyklya",
+      "month": "April",
+      "year": 2026,
+      "platform": "Amazon",
+      "account": "DynamiteFinds",
+      "amount": 67.85,
+      "gmv": 0,
+      "videos": 0,
+      "items": 112,
+      "notes": ""
+    }
+  ],
+  "closeouts": [],
+  "auditLog": [
+    {
+      "id": "mokl8ycw64ab0j",
+      "date": "2026-04-29T21:49:59.408Z",
+      "action": "JSON Backup Exported",
+      "detail": "2026-04-29"
+    },
+    {
+      "id": "mokl8nh1qbpggc",
+      "date": "2026-04-29T21:49:45.301Z",
+      "action": "Daily Entry Saved",
+      "detail": "2026-04-29 | TikTok Shop | DynamiteFinds | $500.00"
+    },
+    {
+      "id": "mokl7i9iuht5lj",
+      "date": "2026-04-29T21:48:51.894Z",
+      "action": "Monthly Total Saved",
+      "detail": "April 2026 | Amazon | DynamiteFinds | Income $67.85 | GMV $0.00 | Videos 0 | Items 112"
+    },
+    {
+      "id": "mokl6kll1exbrs",
+      "date": "2026-04-29T21:48:08.265Z",
+      "action": "External Income Saved",
+      "detail": "Strada | $983.76"
+    },
+    {
+      "id": "mokl696xacz26p",
+      "date": "2026-04-29T21:47:53.481Z",
+      "action": "External Income Saved",
+      "detail": "NARS | $7,402.06"
+    },
+    {
+      "id": "mokl5p1n3gqlix",
+      "date": "2026-04-29T21:47:27.371Z",
+      "action": "External Income Saved",
+      "detail": "NARS | $7,402.06"
+    },
+    {
+      "id": "mokl4sbqeps5ns",
+      "date": "2026-04-29T21:46:44.966Z",
+      "action": "Brand Deal Saved",
+      "detail": "Glacier Fresh | $600.00"
+    },
+    {
+      "id": "mokl462ndvafxj",
+      "date": "2026-04-29T21:46:16.127Z",
+      "action": "Brand Deal Saved",
+      "detail": "Temu | $960.00"
+    },
+    {
+      "id": "mokl32purfg10w",
+      "date": "2026-04-29T21:45:25.122Z",
+      "action": "Brand Deal Saved",
+      "detail": "Temu | $1,615.53"
+    },
+    {
+      "id": "mokl2hrmeu64g3",
+      "date": "2026-04-29T21:44:57.970Z",
+      "action": "Monthly Total Saved",
+      "detail": "April 2026 | TikTok Shop | DynamiteFindsMore | Income $1,900.00 | GMV $16,700.00 | Videos 14 | Items 262"
+    },
+    {
+      "id": "mokl25g2ilx8tx",
+      "date": "2026-04-29T21:44:42.002Z",
+      "action": "Monthly Total Saved",
+      "detail": "April 2026 | TikTok Shop | DynamiteFinds | Income $12,198.47 | GMV $115,822.79 | Videos 42 | Items 2442"
+    },
+    {
+      "id": "mokl1ghn4etcki",
+      "date": "2026-04-29T21:44:09.659Z",
+      "action": "Monthly Total Saved",
+      "detail": "March 2026 | TikTok Shop | DynamiteFindsMore | Income $3,900.00 | GMV $35,200.00 | Videos 29 | Items 507"
+    },
+    {
+      "id": "mokl0shdxi0k3z",
+      "date": "2026-04-29T21:43:38.545Z",
+      "action": "Brand Deal Saved",
+      "detail": "Multiple Brands | $3,161.86"
+    },
+    {
+      "id": "mokl09cnx2somy",
+      "date": "2026-04-29T21:43:13.751Z",
+      "action": "Monthly Total Saved",
+      "detail": "March 2026 | TikTok Shop | DynamiteFinds | Income $11,295.33 | GMV $110,237.72 | Videos 38 | Items 2383"
+    },
+    {
+      "id": "mokkzezlza6b2r",
+      "date": "2026-04-29T21:42:34.401Z",
+      "action": "Monthly Total Saved",
+      "detail": "February 2026 | TikTok Shop | DynamiteFindsMore | Income $890.08 | GMV $7,100.00 | Videos 27 | Items 123"
+    },
+    {
+      "id": "mokkyvx2fbi3c0",
+      "date": "2026-04-29T21:42:09.686Z",
+      "action": "Monthly Total Saved",
+      "detail": "February 2026 | TikTok Shop | DynamiteFinds | Income $7,475.66 | GMV $79,387.11 | Videos 71 | Items 1850"
+    },
+    {
+      "id": "mokky03jmnuq58",
+      "date": "2026-04-29T21:41:28.447Z",
+      "action": "Brand Deal Saved",
+      "detail": "Temu | $1,291.36"
+    },
+    {
+      "id": "mokkxkczcil2h2",
+      "date": "2026-04-29T21:41:08.051Z",
+      "action": "Monthly Total Saved",
+      "detail": "January 2026 | TikTok Shop | DynamiteFindsMore | Income $206.52 | GMV $1,700.00 | Videos 16 | Items 47"
+    },
+    {
+      "id": "mokkwu0c3isvte",
+      "date": "2026-04-29T21:40:33.900Z",
+      "action": "Daily Entry Saved",
+      "detail": "2026-01-01 | TikTok Shop | DynamiteFinds | $1,000.00"
+    },
+    {
+      "id": "mokkwdma4p1lhh",
+      "date": "2026-04-29T21:40:12.658Z",
+      "action": "Monthly Total Saved",
+      "detail": "January 2026 | TikTok Shop | DynamiteFinds | Income $6,438.99 | GMV $68,119.12 | Videos 100 | Items 1406"
+    }
+  ],
+  "settings": {
+    "taxRate": 22,
+    "accounts": [
+      "DynamiteFinds",
+      "DynamiteFindsMore",
+      "Trisha"
+    ],
+    "platforms": [
+      "TikTok Shop",
+      "Amazon",
+      "Facebook",
+      "YouTube",
+      "Instagram",
+      "Snapchat",
+      "Other"
+    ],
+    "expenseCategories": [
+      "Product Purchases",
+      "Shipping",
+      "Subscriptions",
+      "Software",
+      "Mileage",
+      "Equipment",
+      "Props",
+      "Ads",
+      "Misc"
+    ],
+    "usageRights": [
+      "Organic Only",
+      "30-Day Paid Usage",
+      "60-Day Paid Usage",
+      "90-Day Paid Usage",
+      "6-Month Paid Usage",
+      "12-Month Paid Usage",
+      "Unlimited Usage",
+      "Not Included"
+    ],
+    "pricing": {
+      "singleVideo": 800,
+      "bundle3": 2100,
+      "bundle5": 3000,
+      "starterRetainer": 2000,
+      "growthRetainer": 3600,
+      "scaleRetainer": 5000,
+      "usage30": 750,
+      "usage60": 1200,
+      "usage90": 1800,
+      "usage6mo": 3000,
+      "usage12mo": 5000,
+      "usageUnlimited": 7500,
+      "productPhotos": 200,
+      "rawFootage": 500,
+      "rushFee": 100
+    },
+    "pricingVersion": "mediaKitPricingV2",
+    "incomeGoal": 250000,
+    "monthlyGoal": 20000
+  }
+}

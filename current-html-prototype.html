@@ -1,0 +1,3807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Income Tracker</title>
+<style>
+:root{
+  --navy:#141942;
+  --blue:#293d7c;
+  --lightblue:#e8f2fb;
+  --green:#e5f1df;
+  --yellow:#fff2cc;
+  --peach:#fce4d6;
+  --gold:#f4c95d;
+  --line:#b8c0d4;
+  --bg:#f7f8fc;
+  --text:#111827;
+  --muted:#6b7280;
+  --danger:#b3261e;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial, Helvetica, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+}
+header{
+  background:var(--navy);
+  color:#fff;
+  padding:12px 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+.brand h1{
+  margin:0;
+  font-size:22px;
+  line-height:1;
+}
+.brand small{
+  color:#dbe4ff;
+}
+.controls{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+select,input,textarea{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px 9px;
+  font-size:14px;
+  background:#fff;
+  min-height:36px;
+}
+header select, header input{
+  min-width:110px;
+}
+button{
+  border:0;
+  border-radius:8px;
+  padding:9px 12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.primary{background:var(--blue);color:#fff}
+.gold{background:var(--gold);color:#111}
+.light{background:#edf2ff;color:var(--navy);border:1px solid var(--line)}
+.danger{background:var(--danger);color:#fff}
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:9px 18px;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  position:sticky;
+  top:56px;
+  z-index:9;
+  overflow-x:auto;
+}
+.tabs button{
+  white-space:nowrap;
+  background:#f0f3fa;
+  color:var(--navy);
+}
+.tabs button.active{
+  background:var(--blue);
+  color:#fff;
+}
+main{
+  padding:16px 22px;
+  width:100%;
+  max-width:1840px;
+  margin:0 auto;
+}
+.page{display:none}
+.page.active{display:block}
+.summary{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(145px,1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+.metric .label{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  line-height:1.15;
+}
+.metric .value{
+  font-size:19px;
+  font-weight:800;
+  margin-top:5px;
+  color:var(--navy);
+  line-height:1.1;
+}
+.section{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.section-title{
+  padding:10px 12px;
+  background:#eef2ff;
+  color:var(--navy);
+  font-weight:800;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.form-grid{
+  padding:12px;
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:8px;
+}
+.form-grid label{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  margin-bottom:4px;
+}
+.form-grid > div{min-width:0}
+.form-grid input,.form-grid select,.form-grid textarea{
+  width:100%;
+}
+.span2{grid-column:span 2}
+.span3{grid-column:span 3}
+.span6{grid-column:span 6}
+.table-wrap{
+  overflow:auto;
+  max-width:100%;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+}
+th,td{
+  border:1px solid var(--line);
+  padding:8px 9px;
+  text-align:right;
+  white-space:nowrap;
+}
+th{
+  background:var(--blue);
+  color:#fff;
+  font-weight:800;
+  text-align:center;
+}
+td:first-child, th:first-child{
+  text-align:left;
+  position:sticky;
+  left:0;
+  background:#fff;
+  z-index:1;
+}
+th:first-child{
+  background:var(--blue);
+  color:#fff;
+}
+.subhead td{
+  background:#eef2ff!important;
+  font-weight:800;
+  color:var(--navy);
+  text-align:left;
+}
+.total-row td{
+  background:#d9e2f3!important;
+  font-weight:800;
+}
+.green td{background:var(--green)}
+.blueRow td{background:var(--lightblue)}
+.yellow td{background:var(--yellow)}
+.peach td{background:var(--peach)}
+.left{text-align:left!important}
+.center{text-align:center!important}
+.actions button{
+  padding:5px 8px;
+  font-size:12px;
+  margin:1px;
+}
+.status{
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+.Paid{background:#dff5e4;color:#116329}
+.Pending{background:#fff4ce;color:#7a4b00}
+.Overdue{background:#ffdddd;color:#9b1c1c}
+.Follow-Up{background:#ffe6cc;color:#8a3b00}
+.filters{
+  padding:10px 12px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  border-bottom:1px solid var(--line);
+}
+.note{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:minmax(0,2fr) minmax(360px,.95fr);
+  gap:14px;
+  margin-bottom:14px;
+}
+.chart-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  min-width:0;
+}
+.chart-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+  font-weight:800;
+  color:var(--navy);
+}
+.chart-sub{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:400;
+}
+.trendline{
+  width:100%;
+  height:240px;
+}
+.mini-trend{
+  height:28px;
+  margin-top:4px;
+}
+.bar-list{
+  display:grid;
+  gap:9px;
+}
+.bar-row{
+  display:grid;
+  grid-template-columns:140px 1fr 110px;
+  gap:10px;
+  align-items:center;
+  font-size:13px;
+}
+.bar-track{
+  height:11px;
+  background:#e7ebf5;
+  border-radius:999px;
+  overflow:hidden;
+}
+.bar-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--blue),#6ba6da,var(--gold));
+  border-radius:999px;
+}
+.alert-list{
+  display:grid;
+  gap:8px;
+  min-height:180px;
+  align-content:start;
+}
+.alert-item{
+  border:1px solid var(--line);
+  border-left:5px solid var(--gold);
+  background:#fffaf0;
+  border-radius:9px;
+  padding:9px;
+}
+.alert-item strong{
+  display:block;
+  color:var(--navy);
+}
+.alert-item span{
+  color:var(--muted);
+  font-size:12px;
+}
+.insight-row{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.insight{
+  background:#f8faff;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:10px;
+}
+.insight b{
+  display:block;
+  color:var(--navy);
+  font-size:13px;
+  margin-bottom:4px;
+}
+.insight span{
+  color:var(--muted);
+  font-size:12px;
+}
+.tabs{
+  top:58px;
+}
+@media(max-width:1000px){
+  .dashboard-grid{grid-template-columns:1fr}
+  .insight-row{grid-template-columns:1fr}
+}
+
+.toast{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  background:var(--navy);
+  color:#fff;
+  padding:10px 12px;
+  border-radius:8px;
+  display:none;
+  z-index:20;
+}
+@media(max-width:1150px){
+  .summary{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+  .form-grid{grid-template-columns:repeat(3,1fr)}
+  .span2,.span3{grid-column:span 3}
+}
+@media(max-width:700px){
+  header{align-items:flex-start;flex-direction:column}
+  .tabs{top:104px}
+  .summary{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+  .span2,.span3,.span6{grid-column:span 1}
+}
+
+.report-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+.report-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+}
+.report-card b{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+.report-card strong{
+  font-size:18px;
+  color:var(--navy);
+}
+.progress-mini{
+  height:10px;
+  border-radius:99px;
+  background:#e5e7eb;
+  overflow:hidden;
+  margin-top:8px;
+}
+.progress-mini span{
+  display:block;
+  height:100%;
+  background:linear-gradient(90deg,var(--blue),var(--gold));
+}
+@media(max-width:900px){
+  .report-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+
+.forecast-section{
+  margin-bottom:12px;
+}
+.forecast-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(180px,1fr));
+  gap:10px;
+  padding:12px;
+}
+.forecast-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:11px;
+  min-width:0;
+}
+.forecast-card b{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+.forecast-card strong{
+  display:block;
+  color:var(--navy);
+  font-size:18px;
+  line-height:1.1;
+}
+.forecast-card span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
+}
+@media(max-width:900px){
+  .forecast-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:550px){
+  .forecast-grid{grid-template-columns:1fr}
+}
+
+
+@media(max-width:1350px){
+  main{padding:14px 16px;}
+  .summary{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));}
+  .dashboard-grid{grid-template-columns:1fr;}
+  .insight-row{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:900px){
+  header{align-items:flex-start;flex-direction:column}
+  .tabs{top:104px}
+  main{padding:12px;}
+  .forecast-grid{grid-template-columns:repeat(2,1fr);}
+  .insight-row{grid-template-columns:1fr;}
+  .bar-row{grid-template-columns:1fr;gap:4px;}
+}
+@media(max-width:600px){
+  .summary{grid-template-columns:1fr 1fr;}
+  .forecast-grid{grid-template-columns:1fr;}
+}
+
+
+.monthly-strip-section{
+  margin-bottom:14px;
+}
+.monthly-income-strip{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(95px,1fr));
+  gap:8px;
+  padding:12px;
+}
+.month-card{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:10px;
+  padding:9px;
+  min-width:0;
+}
+.month-card.current{
+  border-color:var(--blue);
+  box-shadow:0 0 0 2px rgba(41,61,124,.12);
+}
+.month-card b{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+.month-card strong{
+  display:block;
+  color:var(--navy);
+  font-size:15px;
+  line-height:1.1;
+  white-space:nowrap;
+}
+.month-card .mini-progress{
+  height:7px;
+  background:#e5e7eb;
+  border-radius:99px;
+  overflow:hidden;
+  margin-top:8px;
+}
+.month-card .mini-progress span{
+  display:block;
+  height:100%;
+  background:linear-gradient(90deg,var(--blue),var(--gold));
+}
+@media(max-width:1500px){
+  .monthly-income-strip{grid-template-columns:repeat(6,1fr);}
+}
+@media(max-width:800px){
+  .monthly-income-strip{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:500px){
+  .monthly-income-strip{grid-template-columns:repeat(2,1fr);}
+}
+
+
+.closeout-complete{
+  color:#116329;
+  font-weight:800;
+}
+.closeout-open{
+  color:#9b1c1c;
+  font-weight:800;
+}
+
+
+.income-form-block{
+  display:none;
+}
+.income-form-block.active{
+  display:grid;
+}
+
+
+#startDateFilter,#endDateFilter{
+  min-width:135px;
+}
+#dateModeFilter{
+  min-width:105px;
+}
+@media(max-width:900px){
+  #startDateFilter,#endDateFilter,#dateModeFilter{min-width:100%;}
+}
+
+
+.receipt-preview{
+  border:1px dashed var(--line);
+  border-radius:10px;
+  min-height:42px;
+  padding:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  background:#fafbff;
+}
+.receipt-preview img{
+  max-height:90px;
+  max-width:160px;
+  border-radius:8px;
+  border:1px solid var(--line);
+}
+.receipt-modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  z-index:100;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.receipt-modal.open{
+  display:flex;
+}
+.receipt-modal-inner{
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  max-width:90vw;
+  max-height:90vh;
+  overflow:auto;
+}
+.receipt-modal-inner img{
+  max-width:100%;
+  height:auto;
+  border-radius:8px;
+}
+.receipt-modal-actions{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+
+.pricing-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(360px,.65fr);
+  gap:14px;
+}
+.pricing-panel{min-width:0;}
+.pricing-mini-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+.pricing-mini-card{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px;
+  background:#f8faff;
+}
+.pricing-mini-card b{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+.pricing-mini-card strong{color:var(--navy);font-size:17px;}
+.pricing-edit-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+.pricing-group{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  background:#fff;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+}
+.pricing-group h3{
+  margin:0 0 3px;
+  font-size:14px;
+  color:var(--navy);
+}
+.pricing-group label,.deal-calculator label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+}
+.pricing-group input,.deal-calculator input,.deal-calculator select{width:100%;}
+.pricing-actions{
+  grid-column:1/-1;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.deal-calculator{padding:12px;display:grid;gap:10px;}
+.deal-checkboxes{
+  display:grid;
+  gap:7px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  background:#fff;
+}
+.deal-checkboxes label{
+  display:flex;
+  gap:7px;
+  align-items:center;
+  color:var(--text);
+}
+.deal-summary-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8faff;
+  padding:10px;
+  display:grid;
+  gap:7px;
+}
+.deal-summary-card div{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  border-bottom:1px solid #e3e8f6;
+  padding-bottom:7px;
+}
+.deal-summary-card div:last-child{border-bottom:0;padding-bottom:0;}
+.deal-summary-card span{color:var(--muted);font-size:12px;font-weight:800;}
+.deal-summary-card strong{color:var(--navy);font-size:15px;}
+.deal-summary-card .deal-total strong{font-size:20px;}
+@media(max-width:1100px){
+  .pricing-layout{grid-template-columns:1fr;}
+  .pricing-mini-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:700px){
+  .pricing-edit-grid{grid-template-columns:1fr;}
+  .pricing-mini-grid{grid-template-columns:1fr;}
+}
+
+
+/* Pricing section cleanup */
+.pricing-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);
+  gap:14px;
+  align-items:start;
+}
+.pricing-mini-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+.pricing-mini-card{
+  min-height:62px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.pricing-edit-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.pricing-group{
+  gap:7px;
+}
+.pricing-group input{
+  min-height:34px;
+  padding:7px 9px;
+}
+.deal-calculator{
+  padding:12px;
+  display:grid;
+  gap:10px;
+}
+.deal-calculator > div:not(.deal-summary-card):not(.deal-checkboxes){
+  display:grid;
+  gap:4px;
+}
+.deal-checkboxes{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  background:#fff;
+}
+.deal-checkboxes label{
+  display:grid;
+  grid-template-columns:18px 1fr;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  font-weight:800;
+  color:var(--navy);
+  line-height:1.2;
+}
+.deal-checkboxes input[type="checkbox"]{
+  width:16px;
+  height:16px;
+  min-height:16px;
+  margin:0;
+}
+.deal-summary-card{
+  background:#fff;
+}
+.deal-summary-card .deal-total{
+  background:#eef2ff;
+  margin:-2px;
+  padding:9px;
+  border-radius:9px;
+}
+@media(max-width:1250px){
+  .pricing-layout{grid-template-columns:1fr;}
+}
+@media(max-width:800px){
+  .pricing-mini-grid{grid-template-columns:repeat(2,1fr);}
+  .pricing-edit-grid{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Income Tracker</h1>
+    <small>Track. Prove. Charge. | Know your worth.</small>
+  </div>
+  <div class="controls">
+    <label>View</label>
+    <select id="dateModeFilter">
+      <option value="year">Annual</option>
+      <option value="month">Monthly</option>
+      <option value="week">Weekly</option>
+      <option value="day">Daily</option>
+      <option value="custom">Custom</option>
+    </select>
+    <label>Year</label>
+    <select id="yearFilter"></select>
+    <label id="monthFilterLabel">Month</label>
+    <select id="monthFilter"><option>All</option></select>
+    <label id="startDateLabel" style="display:none">Start</label>
+    <input type="date" id="startDateFilter" style="display:none">
+    <label id="endDateLabel" style="display:none">End</label>
+    <input type="date" id="endDateFilter" style="display:none">
+    <label>Overview Platform</label>
+    <select id="overviewPlatformFilter"><option>All Platforms</option></select>
+    <button class="light" onclick="clearTopFilters()">Clear Filters</button>
+    <button class="gold" onclick="showPage('daily')">+ Add Daily Entry</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="active" onclick="showPage('overview')">Overview</button>
+  <button onclick="showPage('daily')">Income Entry</button>
+  <button onclick="showPage('monthly')">Monthly Grid</button>
+  <button onclick="showPage('platforms')">Platforms</button>
+  <button onclick="showPage('brands')">Brand Deals</button>
+  <button onclick="showPage('pricing')">Pricing</button>
+  <button onclick="showPage('expenses')">Expenses</button>
+  <button onclick="showPage('payments')">Payments Owed</button>
+  <button onclick="showPage('reports')">Reports</button>
+  <button onclick="showPage('settings')">Settings</button>
+  <button onclick="showPage('closeout')">Closeout</button>
+  <button onclick="showPage('data')">Backup</button>
+</div>
+
+<main>
+  <section id="overview" class="page active">
+    <div class="summary" id="summaryCards"></div>
+    <div class="note" style="margin:-4px 0 12px 2px">Income uses paid money only. Pending brand deals stay in Payments Owed until marked Paid.</div>
+
+    <div class="section forecast-section">
+      <div class="section-title">Income Forecast <span class="note">Based on current pace</span></div>
+      <div class="forecast-grid" id="incomeForecastCards"></div>
+    </div>
+
+    <div class="section monthly-strip-section">
+      <div class="section-title">Monthly Income <span class="note">Total income by month</span></div>
+      <div class="monthly-income-strip" id="monthlyIncomeStrip"></div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="chart-card">
+        <div class="chart-title">
+          Monthly Income Trend
+          <span class="chart-sub">Collected income, gross income, and net profit</span>
+        </div>
+        <svg id="incomeTrendChart" class="trendline" viewBox="0 0 900 220" preserveAspectRatio="none"></svg>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          Payments Owed
+          <span class="chart-sub">Open brand deal money</span>
+        </div>
+        <div id="owedHighlights" class="alert-list"></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="chart-card">
+        <div class="chart-title">
+          Platform Income Mix
+          <span class="chart-sub">Includes platform income, paid brand deals, and external income</span>
+        </div>
+        <div id="platformMix" class="bar-list"></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          Key Signals
+          <span class="chart-sub">Selected period</span>
+        </div>
+        <div id="keySignals" class="insight-row"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Recent Activity <span class="note">Latest 8 items</span></div>
+      <div class="table-wrap">
+        <table id="recentTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <section id="daily" class="page">
+    <div class="section">
+      <div class="section-title">Income Entry <span class="note">Choose the type of income entry, then only the needed fields will show</span></div>
+
+      <div class="filters" style="border-bottom:0;padding-bottom:0">
+        <label style="font-weight:800;color:var(--navy)">Entry Type</label>
+        <select id="incomeEntryType" onchange="switchIncomeEntryType()">
+          <option value="daily">Daily Platform Entry</option>
+          <option value="monthly">Monthly Income Total</option>
+          <option value="external">External Income</option>
+        </select>
+      </div>
+
+      <form class="form-grid income-form-block active" id="dailyForm">
+        <input type="hidden" id="dailyId">
+        <div>
+          <label>Date</label>
+          <input type="date" id="dailyDate" required>
+        </div>
+        <div>
+          <label>Month</label>
+          <select id="dailyMonth" required></select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input type="number" id="dailyYear" required>
+        </div>
+        <div>
+          <label>Platform</label>
+          <select id="dailyPlatform"></select>
+        </div>
+        <div>
+          <label>Account</label>
+          <select id="dailyAccount"></select>
+        </div>
+        <div>
+          <label>Commission / Earnings</label>
+          <input type="number" step="0.01" id="dailyEarnings" placeholder="0.00">
+        </div>
+        <div>
+          <label>GMV</label>
+          <input type="number" step="0.01" id="dailyGMV" placeholder="0.00">
+        </div>
+        <div>
+          <label>Videos</label>
+          <input type="number" step="1" id="dailyVideos" placeholder="0">
+        </div>
+        <div>
+          <label>Items Sold</label>
+          <input type="number" step="1" id="dailyItems" placeholder="0">
+        </div>
+        <div class="span3">
+          <label>Notes</label>
+          <input id="dailyNotes" placeholder="Optional notes">
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit" id="dailyBtn">Save Daily Entry</button>
+          <button class="light" type="button" onclick="resetDaily()">Clear</button>
+        </div>
+      </form>
+
+      <form class="form-grid income-form-block" id="monthlyAdjustmentForm">
+        <input type="hidden" id="monthlyAdjustmentId">
+        <div>
+          <label>Month</label>
+          <select id="monthlyAdjustmentMonth" required></select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input type="number" id="monthlyAdjustmentYear" required>
+        </div>
+        <div>
+          <label>Platform</label>
+          <select id="monthlyAdjustmentPlatform"></select>
+        </div>
+        <div>
+          <label>Account</label>
+          <select id="monthlyAdjustmentAccount"></select>
+        </div>
+        <div>
+          <label>Monthly Income Total</label>
+          <input type="number" step="0.01" id="monthlyAdjustmentAmount" required placeholder="0.00">
+        </div>
+        <div>
+          <label>Monthly GMV Total</label>
+          <input type="number" step="0.01" id="monthlyAdjustmentGMV" placeholder="0.00">
+        </div>
+        <div>
+          <label>Monthly Videos Total</label>
+          <input type="number" step="1" id="monthlyAdjustmentVideos" placeholder="0">
+        </div>
+        <div>
+          <label>Monthly Items Sold Total</label>
+          <input type="number" step="1" id="monthlyAdjustmentItems" placeholder="0">
+        </div>
+        <div class="span3">
+          <label>Notes</label>
+          <input id="monthlyAdjustmentNotes" placeholder="Example: Monthly base total from TikTok dashboard">
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit" id="monthlyAdjustmentBtn">Save Monthly Total</button>
+          <button class="light" type="button" onclick="resetMonthlyAdjustment()">Clear</button>
+        </div>
+      </form>
+
+      <form class="form-grid income-form-block" id="externalForm">
+        <input type="hidden" id="externalId">
+        <div>
+          <label>Date</label>
+          <input type="date" id="externalDate" required>
+        </div>
+        <div>
+          <label>Month</label>
+          <select id="externalMonth" required></select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input type="number" id="externalYear" required>
+        </div>
+        <div>
+          <label>Income Source</label>
+          <input id="externalSource" placeholder="Example: NARS" required>
+        </div>
+        <div>
+          <label>Amount</label>
+          <input type="number" step="0.01" id="externalAmount" required>
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit" id="externalBtn">Save External Income</button>
+          <button class="light" type="button" onclick="resetExternal()">Clear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Income Records <span class="note">Daily entries, monthly totals, and external income</span></div>
+      <div class="filters">
+        <select id="incomeRecordTypeFilter" onchange="renderIncomeRecords()">
+          <option value="All">All Income Records</option>
+          <option value="daily">Daily Entries</option>
+          <option value="monthly">Monthly Totals</option>
+          <option value="external">External Income</option>
+        </select>
+        <select id="dailyPlatformFilter" onchange="renderAll()"><option>All Platforms</option></select>
+        <select id="dailyAccountFilter" onchange="renderAll()"><option>All Accounts</option></select>
+        <input id="dailySearch" oninput="renderAll()" placeholder="Search notes/source">
+      </div>
+      <div class="table-wrap"><table id="incomeRecordsTable"></table></div>
+    </div>
+  </section>
+
+  <section id="monthlyAdjustments" class="page" style="display:none"> class="page">
+    <div class="section">
+      <div class="section-title">Monthly Income Totals <span class="note">Use this to enter the current monthly base total. A new monthly total for the same month/platform/account replaces the old one. Daily entries for that same month are added on top.</span></div>
+      <form class="form-grid" id="monthlyAdjustmentForm">
+        <input type="hidden" id="monthlyAdjustmentId">
+        <div>
+          <label>Month</label>
+          <select id="monthlyAdjustmentMonth" required></select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input type="number" id="monthlyAdjustmentYear" required>
+        </div>
+        <div>
+          <label>Platform</label>
+          <select id="monthlyAdjustmentPlatform"></select>
+        </div>
+        <div>
+          <label>Account</label>
+          <select id="monthlyAdjustmentAccount"></select>
+        </div>
+        <div>
+          <label>Monthly Income Total</label>
+          <input type="number" step="0.01" id="monthlyAdjustmentAmount" required placeholder="0.00">
+        </div>
+        <div>
+          <label>Monthly GMV Total</label>
+          <input type="number" step="0.01" id="monthlyAdjustmentGMV" placeholder="0.00">
+        </div>
+        <div>
+          <label>Monthly Videos Total</label>
+          <input type="number" step="1" id="monthlyAdjustmentVideos" placeholder="0">
+        </div>
+        <div>
+          <label>Monthly Items Sold Total</label>
+          <input type="number" step="1" id="monthlyAdjustmentItems" placeholder="0">
+        </div>
+        <div class="span3">
+          <label>Notes</label>
+          <input id="monthlyAdjustmentNotes" placeholder="Example: Monthly base total from TikTok dashboard">
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit" id="monthlyAdjustmentBtn">Save Monthly Total</button>
+          <button class="light" type="button" onclick="resetMonthlyAdjustment()">Clear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Saved Monthly Base Totals <span class="note">These are added to the matching month/platform/account along with any daily entries</span></div>
+      <div class="table-wrap"><table id="monthlyAdjustmentTable"></table></div>
+    </div>
+  </section>
+
+  <section id="monthly" class="page">
+    <div class="section">
+      <div class="section-title">TikTok Account Monthly Grid <span class="note">Matches the core of your spreadsheet</span></div>
+      <div class="table-wrap"><table id="tiktokGrid"></table></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Other Social Monthly Grid</div>
+      <div class="table-wrap"><table id="socialGrid"></table></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Excel-Style Monthly Totals <span class="note">All Social, External Income, Total Income, Estimated Taxes, Net Total</span></div>
+      <div class="table-wrap"><table id="excelTotalsGrid"></table></div>
+    </div>
+  </section>
+
+  <section id="platforms" class="page">
+    <div class="section">
+      <div class="section-title">Platform Breakdown</div>
+      <div class="table-wrap"><table id="platformTable"></table></div>
+    </div>
+  </section>
+
+  <section id="brands" class="page">
+    <div class="section">
+      <div class="section-title">Brand Deal Entry</div>
+      <form class="form-grid" id="brandForm">
+        <input type="hidden" id="brandId">
+        <div><label>Date</label><input type="date" id="brandDate" required></div>
+        <div><label>Month</label><select id="brandMonth" required></select></div>
+        <div><label>Year</label><input type="number" id="brandYear" required></div>
+        <div><label>Platform</label><select id="brandPlatform"></select></div>
+        <div><label>Account</label><select id="brandAccount"></select></div>
+        <div><label>Brand</label><input id="brandName" required></div>
+        <div><label>Contact Person</label><input id="brandContact" placeholder="Name / email"></div>
+        <div><label>Product</label><input id="brandProduct"></div>
+        <div><label>Amount</label><input type="number" step="0.01" id="brandAmount" required></div>
+        <div><label>Due Date</label><input type="date" id="brandDue"></div>
+        <div><label>Status</label><select id="brandStatus"><option>Pending</option><option>Paid</option><option>Overdue</option><option>Follow-Up</option></select></div>
+        <div><label>Usage Rights</label><select id="brandUsage"></select></div>
+        <div class="span3">
+          <label>Contract / Agreement Upload</label>
+          <input type="file" id="brandContract" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx" onchange="previewBrandContract(event)">
+        </div>
+        <div class="span3">
+          <label>Contract File</label>
+          <div id="brandContractPreview" class="receipt-preview">No contract attached</div>
+        </div>
+        <div class="span3"><label>Notes / Deliverables</label><input id="brandNotes"></div>
+        <div class="span6">
+          <button class="primary" type="submit" id="brandBtn">Save Brand Deal</button>
+          <button class="light" type="button" onclick="resetBrand()">Clear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Brand Deal Analytics <span class="note">Based on the selected year/month filters</span></div>
+      <div style="padding:12px">
+        <div class="report-grid" id="brandDealAnalyticsCards"></div>
+      </div>
+      <div class="table-wrap"><table id="brandDealAnalyticsTable"></table></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Brand Deals</div>
+      <div class="table-wrap"><table id="brandTable"></table></div>
+    </div>
+  </section>
+
+
+  <section id="pricing" class="page">
+    <div class="pricing-layout">
+      <div class="section pricing-panel">
+        <div class="section-title">Pricing Guide <span class="note">Consistent with media kit rates</span></div>
+        <div style="padding:12px">
+          <div class="pricing-mini-grid" id="pricingCards"></div>
+
+          <form class="pricing-edit-grid" id="pricingForm">
+            <div class="pricing-group">
+              <h3>Content Creation</h3>
+              <label>Single TikTok Video</label>
+              <input type="number" step="0.01" id="singleVideo">
+              <label>3 Video Bundle</label>
+              <input type="number" step="0.01" id="bundle3">
+              <label>5 Video Bundle</label>
+              <input type="number" step="0.01" id="bundle5">
+            </div>
+
+            <div class="pricing-group">
+              <h3>Monthly Partnerships</h3>
+              <label>Starter Retainer</label>
+              <input type="number" step="0.01" id="starterRetainer">
+              <label>Growth Retainer</label>
+              <input type="number" step="0.01" id="growthRetainer">
+              <label>Scale Retainer</label>
+              <input type="number" step="0.01" id="scaleRetainer">
+            </div>
+
+            <div class="pricing-group">
+              <h3>Usage Add-Ons</h3>
+              <label>30-Day Usage</label>
+              <input type="number" step="0.01" id="usage30">
+              <label>60-Day Usage</label>
+              <input type="number" step="0.01" id="usage60">
+              <label>90-Day Usage</label>
+              <input type="number" step="0.01" id="usage90">
+              <label>6-Month Usage</label>
+              <input type="number" step="0.01" id="usage6mo">
+              <label>12-Month Usage</label>
+              <input type="number" step="0.01" id="usage12mo">
+              <label>Unlimited Usage</label>
+              <input type="number" step="0.01" id="usageUnlimited">
+            </div>
+
+            <div class="pricing-group">
+              <h3>Add-Ons</h3>
+              <label>Product Photos</label>
+              <input type="number" step="0.01" id="productPhotos">
+              <label>Raw Footage Add-On</label>
+              <input type="number" step="0.01" id="rawFootage">
+              <label>Rush Fee</label>
+              <input type="number" step="0.01" id="rushFee">
+            </div>
+
+            <div class="pricing-actions">
+              <button class="primary" type="submit">Save Pricing</button>
+              <button class="light" type="button" onclick="resetPricingDefaults()">Reset Defaults</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="section pricing-panel">
+        <div class="section-title">Deal Calculator <span class="note">Quick estimate</span></div>
+        <div class="deal-calculator">
+          <div>
+            <label>Project Type</label>
+            <select id="dealProjectType" onchange="renderDealCalculator()">
+              <option value="singleVideo">Single Video</option>
+              <option value="bundle3">3 Video Bundle</option>
+              <option value="bundle5">5 Video Bundle</option>
+              <option value="starterRetainer">Starter Monthly Retainer</option>
+              <option value="growthRetainer">Growth Monthly Retainer</option>
+              <option value="scaleRetainer">Scale Monthly Retainer</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Usage</label>
+            <select id="dealUsage" onchange="renderDealCalculator()">
+              <option value="none">None</option>
+              <option value="usage30">30-Day Usage</option>
+              <option value="usage60">60-Day Usage</option>
+              <option value="usage90">90-Day Usage</option>
+              <option value="usage6mo">6-Month Usage</option>
+              <option value="usage12mo">12-Month Usage</option>
+              <option value="usageUnlimited">Unlimited Usage</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Quantity</label>
+            <input type="number" min="1" step="1" id="dealQuantity" value="1" oninput="renderDealCalculator()">
+          </div>
+
+          <div class="deal-checkboxes">
+            <label><input type="checkbox" id="dealProductPhotos" onchange="renderDealCalculator()"> Product Photos</label>
+            <label><input type="checkbox" id="dealRawFootage" onchange="renderDealCalculator()"> Raw Footage</label>
+            <label><input type="checkbox" id="dealRushFee" onchange="renderDealCalculator()"> Rush Fee</label>
+          </div>
+
+          <div class="deal-summary-card">
+            <div><span>Base Price</span><strong id="calcBasePrice">$0.00</strong></div>
+            <div><span>Usage Add-On</span><strong id="calcUsagePrice">$0.00</strong></div>
+            <div><span>Add-Ons Total</span><strong id="calcAddOns">$0.00</strong></div>
+            <div class="deal-total"><span>Estimated Deal Total</span><strong id="calcDealTotal">$0.00</strong></div>
+          </div>
+
+          <p class="note" style="margin:0">Use this as a pricing guide. Final pricing may adjust based on scope, usage, and deliverables.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="expenses" class="page">
+    <div class="section">
+      <div class="section-title">Expense Entry</div>
+      <form class="form-grid" id="expenseForm">
+        <input type="hidden" id="expenseId">
+        <div><label>Date</label><input type="date" id="expenseDate" required></div>
+        <div><label>Month</label><select id="expenseMonth" required></select></div>
+        <div><label>Year</label><input type="number" id="expenseYear" required></div>
+        <div><label>Category</label><select id="expenseCategory"></select></div>
+        <div><label>Platform</label><select id="expensePlatform"></select></div>
+        <div><label>Amount</label><input type="number" step="0.01" id="expenseAmount" required></div>
+        <div class="span3"><label>Notes</label><input id="expenseNotes"></div>
+        <div class="span3">
+          <label>Receipt Photo / Screenshot</label>
+          <input type="file" id="expenseReceipt" accept="image/*,.heic,.heif,.pdf,.png,.jpg,.jpeg,.webp" onchange="previewExpenseReceipt(event)">
+        </div>
+        <div class="span3">
+          <label>Receipt Preview</label>
+          <div id="expenseReceiptPreview" class="receipt-preview">No receipt attached</div>
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit" id="expenseBtn">Save Expense</button>
+          <button class="light" type="button" onclick="resetExpense()">Clear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Expenses</div>
+      <div class="table-wrap"><table id="expenseTable"></table></div>
+    </div>
+  </section>
+
+  <section id="payments" class="page">
+    <div class="section">
+      <div class="section-title">Payments Owed <span class="note">Pending, overdue, and follow-up brand deals</span></div>
+      <div class="table-wrap"><table id="paymentsTable"></table></div>
+    </div>
+  </section>
+
+
+
+  
+<section id="reports" class="page">
+  <div class="section">
+    <div class="section-title">Selected Range Summary <span class="note" id="selectedRangeLabel">Current filter</span></div>
+    <div style="padding:12px">
+      <div class="report-grid" id="reportHighlights"></div>
+    </div>
+    <div class="table-wrap"><table id="selectedRangeReport"></table></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">What Changed <span class="note">Current month vs previous month</span></div>
+    <div class="table-wrap"><table id="changeReport"></table></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Data Check / Reconciliation <span class="note">Use this to compare tracker totals against Excel</span></div>
+    <div class="table-wrap"><table id="dataCheckReport"></table></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Monthly Report</div>
+    <div class="table-wrap"><table id="monthlyReport"></table></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Annual Summary</div>
+    <div class="table-wrap"><table id="annualReport"></table></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Export Reports</div>
+    <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary" onclick="exportSelectedRangeCSV()">Export Selected Range CSV</button>
+      <button class="primary" onclick="exportMonthlyReportCSV()">Export Monthly Report CSV</button>
+      <button class="gold" onclick="exportAnnualReportCSV()">Export Annual Summary CSV</button>
+      <button class="light" onclick="exportPlatformReportCSV()">Export Platform Report CSV</button>
+    </div>
+  </div>
+</section>
+  <section id="settings" class="page">
+    <div class="section">
+      <div class="section-title">Dashboard Settings <span class="note">Controls formulas used in the Overview</span></div>
+      <form class="form-grid" id="dashboardSettingsForm">
+        <div>
+          <label>Estimated Tax Rate %</label>
+          <input type="number" step="0.1" id="settingsTaxRate">
+        </div>
+        <div>
+          <label>Annual Income Goal</label>
+          <input type="number" step="0.01" id="settingsIncomeGoal">
+        </div>
+        <div>
+          <label>Monthly Income Goal</label>
+          <input type="number" step="0.01" id="settingsMonthlyGoal">
+        </div>
+        <div class="span2">
+          <label>Net Formula</label>
+          <input value="Total Income - Estimated Taxes - Expenses" disabled>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="primary" type="submit">Save Dashboard Settings</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Account Settings <span class="note">Add or remove accounts used in the Daily Entry dropdown and monthly grids</span></div>
+      <form class="form-grid" id="accountForm">
+        <div class="span3">
+          <label>New Account Name</label>
+          <input id="newAccountName" placeholder="Example: Trisha's Account">
+        </div>
+        <div class="span3">
+          <label>&nbsp;</label>
+          <button class="primary" type="submit">Add Account</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table id="accountsSettingsTable"></table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Platform Settings <span class="note">Add or remove platforms used for daily entries and expenses</span></div>
+      <form class="form-grid" id="platformForm">
+        <div class="span3">
+          <label>New Platform Name</label>
+          <input id="newPlatformName" placeholder="Example: Pinterest">
+        </div>
+        <div class="span3">
+          <label>&nbsp;</label>
+          <button class="primary" type="submit">Add Platform</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table id="platformsSettingsTable"></table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Expense Category Settings <span class="note">Add/remove expense categories used in the expense form</span></div>
+      <form class="form-grid" id="categoryForm">
+        <div class="span3">
+          <label>New Expense Category</label>
+          <input id="newCategoryName" placeholder="Example: Samples">
+        </div>
+        <div class="span3">
+          <label>&nbsp;</label>
+          <button class="primary" type="submit">Add Category</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table id="categoriesSettingsTable"></table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Usage Rights Settings <span class="note">Add/remove usage right options used in brand deals</span></div>
+      <form class="form-grid" id="usageForm">
+        <div class="span3">
+          <label>New Usage Right</label>
+          <input id="newUsageName" placeholder="Example: 45-Day Paid Usage">
+        </div>
+        <div class="span3">
+          <label>&nbsp;</label>
+          <button class="primary" type="submit">Add Usage Right</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table id="usageSettingsTable"></table>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="closeout" class="page">
+    <div class="section">
+      <div class="section-title">Monthly Closeout Checklist <span class="note">Use this before you consider a month finalized</span></div>
+      <form class="form-grid" id="closeoutForm">
+        <div>
+          <label>Month</label>
+          <select id="closeoutMonth"></select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input type="number" id="closeoutYear">
+        </div>
+        <div class="span6" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <label><input type="checkbox" id="closeoutTikTok"> TikTok totals updated</label>
+          <label><input type="checkbox" id="closeoutBrands"> Brand deals reviewed</label>
+          <label><input type="checkbox" id="closeoutExpenses"> Expenses added</label>
+          <label><input type="checkbox" id="closeoutBackup"> Backup exported</label>
+        </div>
+        <div class="span6">
+          <button class="primary" type="submit">Save Closeout</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Closeout Status</div>
+      <div class="table-wrap"><table id="closeoutTable"></table></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Audit Log <span class="note">Recent adds, edits, deletes, imports, and exports</span></div>
+      <div class="table-wrap"><table id="auditLogTable"></table></div>
+    </div>
+  </section>
+
+  <section id="data" class="page">
+    <div class="section">
+      <div class="section-title">Backup / Export <span class="note">Protect your tracker data before clearing browser storage or updating versions</span></div>
+      <div style="padding:12px;display:grid;gap:14px">
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="primary" onclick="exportCSV()">Export CSV</button>
+          <button class="gold" onclick="exportJSON()">Export JSON Backup</button>
+          <span class="note">Use JSON Backup to fully restore the tracker later.</span>
+        </div>
+
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff">
+          <div style="font-weight:800;color:var(--navy);margin-bottom:6px">Restore From Backup</div>
+          <div class="note" style="margin-bottom:10px">Select your saved JSON backup file, then click Import Backup. This replaces the current tracker data with the backup file.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label class="light" for="importFile" style="display:inline-block;cursor:pointer;padding:9px 12px;border-radius:8px;font-weight:700">Select Backup File</label>
+            <input type="file" id="importFile" accept="application/json" style="display:none" onchange="handleBackupFileSelect(event)">
+            <span id="selectedBackupFile" class="note">No file selected</span>
+            <button class="primary" onclick="importSelectedBackup()">Import Backup</button>
+          </div>
+        </div>
+
+        <div style="border:1px solid #f1b4b4;border-radius:10px;padding:12px;background:#fff7f7">
+          <div style="font-weight:800;color:#8a1f1f;margin-bottom:6px">Danger Zone</div>
+          <div class="note" style="margin-bottom:10px">Only clear data after exporting a JSON backup.</div>
+          <button class="danger" onclick="clearData()">Clear All Data</button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="receipt-modal" id="receiptModal">
+  <div class="receipt-modal-inner">
+    <div class="receipt-modal-actions">
+      <strong>Receipt</strong>
+      <button class="light" onclick="closeReceiptModal()">Close</button>
+    </div>
+    <img id="receiptModalImage" alt="Receipt preview">
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const storeKey = "incomeTrackerReceiptUploadFixedV1";
+let pendingExpenseReceipt = null;
+let pendingBrandContract = null;
+let state = {daily:[], brands:[], expenses:[], external:[], monthlyAdjustments:[], closeouts:[], auditLog:[], settings:{
+  taxRate:22,
+  accounts:["DynamiteFinds","DynamiteFindsMore","Trisha"],
+  platforms:["TikTok Shop","Amazon","Facebook","YouTube","Instagram","Snapchat","Other"],
+  expenseCategories:["Product Purchases","Shipping","Subscriptions","Software","Mileage","Equipment","Props","Ads","Misc"],
+  usageRights:["Organic Only","30-Day Paid Usage","60-Day Paid Usage","90-Day Paid Usage","6-Month Paid Usage","12-Month Paid Usage","Unlimited Usage","Not Included"],
+  pricing:{
+    priceSingle:1500,
+    priceBundle3:4000,
+    priceRetainer:7500,
+    pricePhotos:500,
+    priceRaw:750,
+    priceRush:500,
+    usage30:750,
+    usage60:1200,
+    usage90:1800,
+    usage6mo:3000,
+    usage12mo:5000,
+    usageUnlimited:7500
+  }
+}};
+
+const $ = id => document.getElementById(id);
+const money = n => Number(n||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
+const number = n => Number(n||0).toLocaleString();
+const today = () => new Date().toISOString().slice(0,10);
+const curMonth = () => months[new Date().getMonth()];
+const curYear = () => new Date().getFullYear();
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc = v => String(v??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+function defaultPricing(){
+  return {
+    singleVideo:800,
+    bundle3:2100,
+    bundle5:3000,
+    starterRetainer:2000,
+    growthRetainer:3600,
+    scaleRetainer:5000,
+    usage30:750,
+    usage60:1200,
+    usage90:1800,
+    usage6mo:3000,
+    usage12mo:5000,
+    usageUnlimited:7500,
+    productPhotos:200,
+    rawFootage:500,
+    rushFee:100
+  };
+}
+function defaultAccounts(){
+  return ["DynamiteFinds","DynamiteFindsMore","Trisha"];
+}
+function defaultPlatforms(){
+  return ["TikTok Shop","Amazon","Facebook","YouTube","Instagram","Snapchat","Other"];
+}
+function defaultExpenseCategories(){
+  return ["Product Purchases","Shipping","Subscriptions","Software","Mileage","Equipment","Props","Ads","Misc"];
+}
+function defaultUsageRights(){
+  return ["Organic Only","30-Day Paid Usage","60-Day Paid Usage","90-Day Paid Usage","6-Month Paid Usage","12-Month Paid Usage","Unlimited Usage","Not Included"];
+}
+function normalizeState(){
+  state.external = Array.isArray(state.external) ? state.external : [];
+  state.monthlyAdjustments = Array.isArray(state.monthlyAdjustments) ? state.monthlyAdjustments : [];
+  state.monthlyAdjustments = state.monthlyAdjustments.map(x=>({gmv:0,videos:0,items:0,...x}));
+  state.closeouts = Array.isArray(state.closeouts) ? state.closeouts : [];
+  state.auditLog = Array.isArray(state.auditLog) ? state.auditLog : [];
+  state.settings = state.settings || {};
+  state.settings.taxRate = Number(state.settings.taxRate ?? 22);
+  const targetPricingVersion = "mediaKitPricingV2";
+  if(state.settings.pricingVersion !== targetPricingVersion){
+    state.settings.pricing = defaultPricing();
+    state.settings.pricingVersion = targetPricingVersion;
+  }
+  state.settings.incomeGoal = Number(state.settings.incomeGoal ?? 250000);
+  state.settings.monthlyGoal = Number(state.settings.monthlyGoal ?? 20000);
+  if(!state.settings.pricing) state.settings.pricing = defaultPricing();
+  state.settings.pricing = {...defaultPricing(), ...state.settings.pricing};
+  state.settings.accounts = Array.isArray(state.settings.accounts) && state.settings.accounts.length ? state.settings.accounts : defaultAccounts();
+  state.settings.platforms = Array.isArray(state.settings.platforms) && state.settings.platforms.length ? state.settings.platforms : defaultPlatforms();
+  state.settings.expenseCategories = Array.isArray(state.settings.expenseCategories) && state.settings.expenseCategories.length ? state.settings.expenseCategories : defaultExpenseCategories();
+  state.settings.usageRights = Array.isArray(state.settings.usageRights) && state.settings.usageRights.length ? state.settings.usageRights : defaultUsageRights();
+
+  // Keep legacy/default account names from older versions, but only if they already exist in saved entries.
+  const usedAccounts = [...new Set(state.daily.map(x=>x.account).filter(Boolean))];
+  usedAccounts.forEach(a=>{
+    if(!state.settings.accounts.includes(a)) state.settings.accounts.push(a);
+  });
+
+  const usedPlatforms = [...new Set([...state.daily.map(x=>x.platform), ...state.brands.map(x=>x.platform), ...state.expenses.map(x=>x.platform)].filter(Boolean))];
+  usedPlatforms.forEach(p=>{
+    if(!state.settings.platforms.includes(p) && !["Brand Direct","General"].includes(p)) state.settings.platforms.push(p);
+  });
+
+  const usedCategories = [...new Set(state.expenses.map(x=>x.category).filter(Boolean))];
+  usedCategories.forEach(c=>{
+    if(!state.settings.expenseCategories.includes(c)) state.settings.expenseCategories.push(c);
+  });
+
+  const usedUsageRights = [...new Set(state.brands.map(x=>x.usage).filter(Boolean))];
+  usedUsageRights.forEach(u=>{
+    if(!state.settings.usageRights.includes(u)) state.settings.usageRights.push(u);
+  });
+
+  state.brands = state.brands.map(b => ({account:"DynamiteFinds", contact:"", usage:"Organic Only", contract:null, ...b}));
+  state.expenses = state.expenses.map(e => ({receipt:null, ...e}));
+}
+function load(){
+  const raw = localStorage.getItem(storeKey);
+  if(raw){
+    try{state = JSON.parse(raw)}catch(e){}
+    normalizeState();
+    save();
+  } else {
+    seed();
+    normalizeState();
+    save();
+  }
+}
+function save(){localStorage.setItem(storeKey, JSON.stringify(state))}
+function seed(){
+  state.daily = [];
+  state.brands = [];
+  state.expenses = [];
+  if(!state.external) state.external = [];
+}
+
+function setup(){
+  load();
+  fillMonths();
+  fillYears();
+  ["dailyDate","brandDate","expenseDate","externalDate"].forEach(id=>{ if($(id)) $(id).value=today(); });
+  ["dailyMonth","brandMonth","expenseMonth","externalMonth","monthlyAdjustmentMonth","closeoutMonth"].forEach(id=>{ if($(id)) $(id).value=curMonth(); });
+  ["dailyYear","brandYear","expenseYear","externalYear","monthlyAdjustmentYear","closeoutYear"].forEach(id=>{ if($(id)) $(id).value=curYear(); });
+  $("yearFilter").value = curYear();
+  $("monthFilter").value = "All";
+  if($("startDateFilter")) $("startDateFilter").value = today();
+  if($("endDateFilter")) $("endDateFilter").value = today();
+  if($("dateModeFilter")) $("dateModeFilter").value = "year";
+  syncDateFilterUI();
+  fillFilters();
+  fillPricingForm();
+  bindForms();
+  renderAll();
+}
+function fillMonths(){
+  ["monthFilter","dailyMonth","brandMonth","expenseMonth","externalMonth","monthlyAdjustmentMonth","closeoutMonth"].forEach(id=>{
+    const hasAll = id==="monthFilter";
+    $(id).innerHTML = hasAll ? "<option>All</option>" : "";
+    months.forEach(m=>$(id).insertAdjacentHTML("beforeend",`<option>${m}</option>`));
+  });
+}
+function fillYears(){
+  const years = new Set([curYear(),...state.daily.map(x=>x.year),...state.brands.map(x=>x.year),...state.expenses.map(x=>x.year),...state.external.map(x=>x.year),...state.monthlyAdjustments.map(x=>x.year),...state.closeouts.map(x=>x.year)]);
+  $("yearFilter").innerHTML = "";
+  [...years].sort((a,b)=>b-a).forEach(y=>$("yearFilter").insertAdjacentHTML("beforeend",`<option>${y}</option>`));
+}
+function optionList(values){
+  return values.map(v=>`<option>${esc(v)}</option>`).join("");
+}
+function fillDynamicDropdowns(){
+  const platforms = state.settings.platforms;
+  const accounts = state.settings.accounts;
+
+  $("dailyPlatform").innerHTML = optionList(platforms);
+  if($("monthlyAdjustmentPlatform")) $("monthlyAdjustmentPlatform").innerHTML = optionList(platforms);
+  $("dailyAccount").innerHTML = optionList(accounts);
+  if($("brandAccount")) $("brandAccount").innerHTML = optionList(accounts);
+  if($("monthlyAdjustmentAccount")) $("monthlyAdjustmentAccount").innerHTML = optionList(accounts);
+
+  $("brandPlatform").innerHTML = optionList([...platforms.filter(p=>p!=="Other"), "Brand Direct", "Other"]);
+  $("expensePlatform").innerHTML = optionList(["General", ...platforms]);
+  if($("expenseCategory")) $("expenseCategory").innerHTML = optionList(state.settings.expenseCategories);
+  if($("brandUsage")) $("brandUsage").innerHTML = optionList(state.settings.usageRights);
+
+  $("dailyPlatformFilter").innerHTML = "<option>All Platforms</option>" + optionList(platforms);
+  $("dailyAccountFilter").innerHTML = "<option>All Accounts</option>" + optionList(accounts);
+  if($("overviewPlatformFilter")){
+    const current = $("overviewPlatformFilter").value || "All Platforms";
+    $("overviewPlatformFilter").innerHTML = "<option>All Platforms</option>" + optionList(platforms);
+    $("overviewPlatformFilter").value = [...platforms, "All Platforms"].includes(current) ? current : "All Platforms";
+  }
+}
+function fillFilters(){
+  fillDynamicDropdowns();
+}
+
+function compressImageFile(file, maxWidth=1200, quality=.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL("image/jpeg",quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewExpenseReceipt(event){
+  const file = event.target.files && event.target.files[0];
+  const preview = $("expenseReceiptPreview");
+
+  if(!file){
+    pendingExpenseReceipt = null;
+    if(preview) preview.textContent = "No receipt attached";
+    return;
+  }
+
+  const name = file.name || "";
+  const ext = name.split(".").pop().toLowerCase();
+  const isBrowserImage = file.type && file.type.startsWith("image/");
+  const isAllowedImageExt = ["jpg","jpeg","png","webp","gif","bmp","heic","heif"].includes(ext);
+  const isPdf = file.type === "application/pdf" || ext === "pdf";
+
+  if(!isBrowserImage && !isAllowedImageExt && !isPdf){
+    alert("This file type is not supported. Please upload JPG, PNG, WEBP, HEIC, HEIF, or PDF.");
+    event.target.value = "";
+    pendingExpenseReceipt = null;
+    if(preview) preview.textContent = "No receipt attached";
+    return;
+  }
+
+  try{
+    let data;
+    let type = file.type || "application/octet-stream";
+
+    if(isBrowserImage && !["heic","heif"].includes(ext)){
+      data = await compressImageFile(file);
+      type = "image/jpeg";
+    }else{
+      data = await readFileAsDataURL(file);
+    }
+
+    pendingExpenseReceipt = {
+      name:file.name,
+      type:type,
+      data:data,
+      savedAt:new Date().toISOString()
+    };
+
+    if(preview){
+      if(type.startsWith("image/")){
+        preview.innerHTML = `<img src="${data}" alt="Receipt preview"><span>${esc(file.name)}</span>`;
+      }else{
+        preview.innerHTML = `<span>${esc(file.name)}</span>`;
+      }
+    }
+  }catch(err){
+    alert("Could not read this receipt file. Try saving it as JPG or PNG, then upload again.");
+    pendingExpenseReceipt = null;
+    if(preview) preview.textContent = "No receipt attached";
+  }
+}
+
+function viewReceipt(id){
+  const expense = state.expenses.find(x=>x.id===id);
+  if(!expense || !expense.receipt || !expense.receipt.data){
+    alert("No receipt is attached to this expense.");
+    return;
+  }
+
+  const type = expense.receipt.type || "";
+
+  if(type.startsWith("image/")){
+    $("receiptModalImage").src = expense.receipt.data;
+    $("receiptModal").classList.add("open");
+    return;
+  }
+
+  const win = window.open();
+  if(!win){
+    alert("Popup blocked. Allow popups to view or download the receipt.");
+    return;
+  }
+
+  if(type.includes("pdf")){
+    win.document.write(`<iframe src="${expense.receipt.data}" style="width:100%;height:100vh;border:0"></iframe>`);
+  }else{
+    win.document.write(`<a href="${expense.receipt.data}" download="${expense.receipt.name || "receipt"}">Download ${expense.receipt.name || "receipt"}</a>`);
+  }
+}
+
+function closeReceiptModal(){
+  $("receiptModal").classList.remove("open");
+  $("receiptModalImage").src = "";
+}
+
+
+function readFileAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewBrandContract(event){
+  const file = event.target.files && event.target.files[0];
+  const preview = $("brandContractPreview");
+  if(!file){
+    pendingBrandContract = null;
+    if(preview) preview.textContent = "No contract attached";
+    return;
+  }
+
+  const maxBytes = 2.5 * 1024 * 1024;
+  if(file.size > maxBytes){
+    alert("This file is too large for local browser storage. Please upload a file under 2.5 MB.");
+    event.target.value = "";
+    pendingBrandContract = null;
+    if(preview) preview.textContent = "No contract attached";
+    return;
+  }
+
+  try{
+    const data = await readFileAsDataURL(file);
+    pendingBrandContract = {
+      name:file.name,
+      type:file.type || "application/octet-stream",
+      data:data,
+      savedAt:new Date().toISOString()
+    };
+    renderBrandContractPreview(pendingBrandContract);
+  }catch(err){
+    alert("Could not read this file. Try a different file.");
+    pendingBrandContract = null;
+  }
+}
+
+function renderBrandContractPreview(contract){
+  const preview = $("brandContractPreview");
+  if(!preview) return;
+  if(contract && contract.data){
+    preview.innerHTML = `<span>${esc(contract.name || "Saved contract")}</span>`;
+  }else{
+    preview.textContent = "No contract attached";
+  }
+}
+
+function viewBrandContract(id){
+  const deal = state.brands.find(x=>x.id===id);
+  if(!deal || !deal.contract || !deal.contract.data){
+    alert("No contract is attached to this brand deal.");
+    return;
+  }
+  const win = window.open();
+  if(!win){
+    alert("Popup blocked. Allow popups for this file to view the contract.");
+    return;
+  }
+  if((deal.contract.type || "").startsWith("image/") || (deal.contract.type || "").includes("pdf")){
+    win.document.write(`<iframe src="${deal.contract.data}" style="width:100%;height:100vh;border:0"></iframe>`);
+  }else{
+    win.document.write(`<a href="${deal.contract.data}" download="${deal.contract.name || "contract"}">Download ${deal.contract.name || "contract"}</a>`);
+  }
+}
+
+
+function bindForms(){
+  $("dailyForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const existingDuplicate = !$("dailyId").value && state.daily.some(x =>
+      x.date === $("dailyDate").value &&
+      x.platform === $("dailyPlatform").value &&
+      x.account === $("dailyAccount").value
+    );
+
+    if(existingDuplicate && !confirm("You already have a daily entry for this date, platform, and account. Add another one anyway?")){
+      return;
+    }
+
+    const item = {
+      id:$("dailyId").value || uid(),
+      date:$("dailyDate").value,
+      month:$("dailyMonth").value,
+      year:+$("dailyYear").value,
+      platform:$("dailyPlatform").value,
+      account:$("dailyAccount").value,
+      earnings:+$("dailyEarnings").value||0,
+      gmv:+$("dailyGMV").value||0,
+      videos:+$("dailyVideos").value||0,
+      items:+$("dailyItems").value||0,
+      notes:$("dailyNotes").value
+    };
+    upsert(state.daily,item);
+    logAction("Daily Entry Saved", `${item.date} | ${item.platform} | ${item.account} | ${money(item.earnings)}`); save(); fillYears(); resetDaily(); renderAll(); toast("Daily entry saved");
+  });
+
+  $("brandForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const item = {
+      id:$("brandId").value || uid(),
+      date:$("brandDate").value,
+      month:$("brandMonth").value,
+      year:+$("brandYear").value,
+      platform:$("brandPlatform").value,
+      account:$("brandAccount").value,
+      brand:$("brandName").value,
+      contact:$("brandContact").value,
+      product:$("brandProduct").value,
+      amount:+$("brandAmount").value||0,
+      due:$("brandDue").value,
+      status:$("brandStatus").value,
+      usage:$("brandUsage").value,
+      contract: pendingBrandContract || (state.brands.find(x=>x.id===$("brandId").value)?.contract || null),
+      notes:$("brandNotes").value
+    };
+    upsert(state.brands,item);
+    logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`); save(); fillYears(); resetBrand(); renderAll(); toast("Brand deal saved");
+  });
+
+  if($("dashboardSettingsForm")){
+    $("dashboardSettingsForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      state.settings.taxRate = +$("settingsTaxRate").value || 0;
+      state.settings.incomeGoal = +$("settingsIncomeGoal").value || 0;
+      state.settings.monthlyGoal = +$("settingsMonthlyGoal").value || 0;
+      save();
+      renderAll();
+      toast("Dashboard settings saved");
+    });
+  }
+
+  $("accountForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    addAccount();
+  });
+
+  $("platformForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    addPlatform();
+  });
+
+  if($("categoryForm")){
+    $("categoryForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      addExpenseCategory();
+    });
+  }
+
+  if($("usageForm")){
+    $("usageForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      addUsageRight();
+    });
+  }
+
+  $("pricingForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    savePricingForm();
+    toast("Pricing saved");
+  });
+
+  if($("monthlyAdjustmentForm")){
+    $("monthlyAdjustmentForm").addEventListener("submit", e=>{
+    e.preventDefault();
+
+    const editingId = $("monthlyAdjustmentId").value;
+    const item = {
+      id: editingId || uid(),
+      month:$("monthlyAdjustmentMonth").value,
+      year:+$("monthlyAdjustmentYear").value,
+      platform:$("monthlyAdjustmentPlatform").value,
+      account:$("monthlyAdjustmentAccount").value,
+      amount:+$("monthlyAdjustmentAmount").value||0,
+      gmv:+$("monthlyAdjustmentGMV").value||0,
+      videos:+$("monthlyAdjustmentVideos").value||0,
+      items:+$("monthlyAdjustmentItems").value||0,
+      notes:$("monthlyAdjustmentNotes").value
+    };
+
+    const existingIndex = state.monthlyAdjustments.findIndex(x =>
+      x.id !== editingId &&
+      +x.year === +item.year &&
+      x.month === item.month &&
+      x.platform === item.platform &&
+      x.account === item.account
+    );
+
+    if(existingIndex >= 0){
+      item.id = state.monthlyAdjustments[existingIndex].id;
+      state.monthlyAdjustments[existingIndex] = item;
+      logAudit("Replaced monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
+    }else{
+      upsert(state.monthlyAdjustments,item);
+      logAudit("Saved monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
+    }
+
+    save(); resetMonthlyAdjustment(); renderAll(); toast("Monthly total saved");
+  });
+  }
+
+  if($("closeoutForm")){
+    $("closeoutForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      const key = `${$("closeoutYear").value}-${$("closeoutMonth").value}`;
+      const item = {
+        id:key,
+        month:$("closeoutMonth").value,
+        year:+$("closeoutYear").value,
+        tiktok:$("closeoutTikTok").checked,
+        brands:$("closeoutBrands").checked,
+        expenses:$("closeoutExpenses").checked,
+        backup:$("closeoutBackup").checked
+      };
+      const idx = state.closeouts.findIndex(x=>x.id===key);
+      if(idx>=0) state.closeouts[idx]=item; else state.closeouts.push(item);
+      logAction("Closeout Saved", `${item.month} ${item.year}`);
+      save(); renderAll(); toast("Closeout saved");
+    });
+  }
+
+  if($("externalForm")){
+    $("externalForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      const item = {
+        id:$("externalId").value || uid(),
+        date:$("externalDate").value,
+        month:$("externalMonth").value,
+        year:+$("externalYear").value,
+        source:$("externalSource").value,
+        amount:+$("externalAmount").value||0
+      };
+      upsert(state.external,item);
+      logAction("External Income Saved", `${item.source} | ${money(item.amount)}`); save(); fillYears(); resetExternal(); renderAll(); toast("External income saved");
+    });
+  }
+
+  $("expenseForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const item = {
+      id:$("expenseId").value || uid(),
+      date:$("expenseDate").value,
+      month:$("expenseMonth").value,
+      year:+$("expenseYear").value,
+      category:$("expenseCategory").value,
+      platform:$("expensePlatform").value,
+      amount:+$("expenseAmount").value||0,
+      notes:$("expenseNotes").value,
+      receipt: pendingExpenseReceipt || (state.expenses.find(x=>x.id===$("expenseId").value)?.receipt || null)
+    };
+    upsert(state.expenses,item);
+    logAction("Expense Saved", `${item.category} | ${money(item.amount)}`); save(); fillYears(); resetExpense(); renderAll(); toast("Expense saved");
+  });
+}
+function upsert(arr,item){
+  const i = arr.findIndex(x=>x.id===item.id);
+  if(i>=0) arr[i]=item; else arr.push(item);
+}
+
+function toISODate(d){
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function monthNumber(monthName){
+  return months.indexOf(monthName) + 1;
+}
+function monthDateRange(yr, monthName){
+  const m = monthNumber(monthName);
+  const start = `${yr}-${String(m).padStart(2,"0")}-01`;
+  const end = toISODate(new Date(yr, m, 0));
+  return {start,end};
+}
+function weekDateRange(baseDate){
+  const d = new Date(baseDate + "T00:00:00");
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {start:toISODate(monday), end:toISODate(sunday)};
+}
+function getActiveDateRange(){
+  const mode = $("dateModeFilter") ? $("dateModeFilter").value : "year";
+  const yr = +$("yearFilter").value || curYear();
+
+  if(mode === "day"){
+    const selected = $("startDateFilter").value || today();
+    return {mode,start:selected,end:selected};
+  }
+
+  if(mode === "week"){
+    const selected = $("startDateFilter").value || today();
+    return {mode,...weekDateRange(selected)};
+  }
+
+  if(mode === "month"){
+    const m = $("monthFilter").value === "All" ? curMonth() : $("monthFilter").value;
+    return {mode,...monthDateRange(yr,m)};
+  }
+
+  if(mode === "custom"){
+    const start = $("startDateFilter").value || `${yr}-01-01`;
+    const end = $("endDateFilter").value || today();
+    return {mode,start,end};
+  }
+
+  return {mode,start:`${yr}-01-01`,end:`${yr}-12-31`};
+}
+
+function activePeriodLabel(){
+  const r = getActiveDateRange();
+  const mode = $("dateModeFilter") ? $("dateModeFilter").value : "year";
+  if(mode === "year") return `Annual | ${year()}`;
+  if(mode === "month") return `Monthly | ${month()==="All" ? curMonth() : month()} ${year()}`;
+  if(mode === "week") return `Weekly | ${r.start} to ${r.end}`;
+  if(mode === "day") return `Daily | ${r.start}`;
+  return `Custom | ${r.start} to ${r.end}`;
+}
+
+function dateInRange(dateStr, range){
+  if(!dateStr) return false;
+  return dateStr >= range.start && dateStr <= range.end;
+}
+function monthInRange(yr, monthName, range){
+  const r = monthDateRange(+yr, monthName);
+  return r.end >= range.start && r.start <= range.end;
+}
+function syncDateFilterUI(){
+  const mode = $("dateModeFilter") ? $("dateModeFilter").value : "year";
+  const showMonth = mode === "month";
+  const showStart = ["day","week","custom"].includes(mode);
+  const showEnd = mode === "custom";
+
+  if($("monthFilterLabel")) $("monthFilterLabel").style.display = showMonth ? "" : "none";
+  if($("monthFilter")) $("monthFilter").style.display = showMonth ? "" : "none";
+
+  if($("startDateLabel")) $("startDateLabel").style.display = showStart ? "" : "none";
+  if($("startDateFilter")) $("startDateFilter").style.display = showStart ? "" : "none";
+  if($("endDateLabel")) $("endDateLabel").style.display = showEnd ? "" : "none";
+  if($("endDateFilter")) $("endDateFilter").style.display = showEnd ? "" : "none";
+}
+
+function year(){return +$("yearFilter").value}
+function month(){return $("monthFilter").value}
+function inPeriod(x){
+  const range = getActiveDateRange();
+  if(x.date) return dateInRange(x.date, range);
+  if(x.month && x.year) return monthInRange(x.year, x.month, range);
+  return +x.year===year();
+}
+
+
+function overviewPlatform(){
+  return $("overviewPlatformFilter") ? $("overviewPlatformFilter").value : "All Platforms";
+}
+
+
+
+function logAction(action, detail){
+  state.auditLog = Array.isArray(state.auditLog) ? state.auditLog : [];
+  state.auditLog.unshift({
+    id: uid(),
+    date: new Date().toISOString(),
+    action,
+    detail
+  });
+  state.auditLog = state.auditLog.slice(0,100);
+}
+
+
+
+
+
+function periodForFilters({yr=year(), monthName=null, platformName=null, accountName=null} = {}){
+  let daily = state.daily.filter(x=>+x.year===+yr);
+  let brands = state.brands.filter(x=>+x.year===+yr);
+  let expenses = state.expenses.filter(x=>+x.year===+yr);
+  let external = (state.external||[]).filter(x=>+x.year===+yr);
+
+  if(monthName){
+    daily = daily.filter(x=>x.month===monthName);
+    brands = brands.filter(x=>x.month===monthName);
+    expenses = expenses.filter(x=>x.month===monthName);
+    external = external.filter(x=>x.month===monthName);
+  }
+
+  if(platformName){
+    daily = daily.filter(x=>x.platform===platformName);
+    brands = brands.filter(x=>x.platform===platformName);
+    expenses = expenses.filter(x=>x.platform===platformName || x.platform==="General");
+    external = [];
+  }
+
+  if(accountName){
+    daily = daily.filter(x=>x.account===accountName);
+    brands = brands.filter(x=>(x.account||"")===accountName);
+  }
+
+  return applyAdjustmentsToPeriod({
+    daily,
+    brands,
+    expenses,
+    external,
+    _year:yr,
+    _month:monthName,
+    _platform:platformName,
+    _account:accountName
+  });
+}
+
+function totals(d=getPeriod()){
+  const earnings = d.daily.reduce((s,x)=>s+(+x.earnings||0),0);
+  const tiktokEarnings = d.daily.filter(x=>x.platform==="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
+  const otherPlatformEarnings = d.daily.filter(x=>x.platform!=="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
+  const gmv = d.daily.reduce((s,x)=>s+(+x.gmv||0),0);
+  const videos = d.daily.reduce((s,x)=>s+(+x.videos||0),0);
+  const items = d.daily.reduce((s,x)=>s+(+x.items||0),0);
+
+  const brandGross = d.brands.reduce((s,x)=>s+(+x.amount||0),0);
+  const brandPaid = d.brands.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const owed = d.brands.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const expenses = d.expenses.reduce((s,x)=>s+(+x.amount||0),0);
+  const externalIncome = (d.external||[]).reduce((s,x)=>s+(+x.amount||0),0);
+
+  const brandTotal = brandPaid;
+  const totalIncome = earnings + brandPaid + externalIncome;
+  const taxRate = +(state.settings.taxRate ?? 22);
+  const taxes = totalIncome * (taxRate / 100);
+  const net = totalIncome - taxes - expenses;
+  const collected = totalIncome;
+
+  return {
+    earnings,
+    tiktokEarnings,
+    otherPlatformEarnings,
+    gmv,
+    videos,
+    items,
+    brandTotal,
+    brandGross,
+    brandPaid,
+    owed,
+    expenses,
+    externalIncome,
+    totalIncome,
+    gross:totalIncome,
+    allSocial:earnings + brandPaid,
+    collected,
+    net,
+    taxes,
+    taxRate
+  };
+}
+function renderAll(){
+  renderSummary();
+  renderSnapshot();
+  renderRecent();
+  renderDailyTable();
+  renderGrids();
+  renderPlatformTable();
+  renderBrandAnalytics();
+  renderBrandTable();
+  renderPricing();
+  renderExpenseTable();
+  renderPayments();
+  if(document.getElementById("reports")) renderReports();
+  renderDataCheck();
+  renderExternalTable();
+  renderSettings();
+}
+
+/* ===== SINGLE SOURCE OF TRUTH CALCULATION ENGINE ===== */
+
+function calcRange(){
+  return getActiveDateRange ? getActiveDateRange() : {start:`${year()}-01-01`, end:`${year()}-12-31`};
+}
+
+function adjustmentDate(adj){
+  const m = months.indexOf(adj.month) + 1;
+  return `${adj.year}-${String(m).padStart(2,"0")}-01`;
+}
+
+function adjustmentInRange(adj, range){
+  if(!adj || !adj.month || !adj.year) return false;
+  return monthInRange(adj.year, adj.month, range);
+}
+
+function baseDailyRowsForRange(range, platformName=null, accountName=null){
+  let rows = state.daily.filter(x=>dateInRange(x.date, range));
+  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=>x.platform === platformName);
+  if(accountName) rows = rows.filter(x=>x.account === accountName);
+  return rows;
+}
+
+function monthlyAdjustmentRowsForRange(range, platformName=null, accountName=null){
+  const rows = [];
+
+  (state.monthlyAdjustments || [])
+    .filter(adj=>adjustmentInRange(adj, range))
+    .filter(adj=>!platformName || platformName === "All Platforms" || adj.platform === platformName)
+    .filter(adj=>!accountName || adj.account === accountName)
+    .forEach(adj=>{
+      rows.push({
+        id:"monthly-total-" + adj.id,
+        date: adjustmentDate(adj),
+        month: adj.month,
+        year: +adj.year,
+        platform: adj.platform,
+        account: adj.account,
+        earnings: +adj.amount || 0,
+        gmv: +adj.gmv || 0,
+        videos: +adj.videos || 0,
+        items: +adj.items || 0,
+        notes: adj.notes || "Monthly base total"
+      });
+    });
+
+  return rows;
+}
+
+function adjustedDailyForRange(range, platformName=null, accountName=null){
+  return [
+    ...baseDailyRowsForRange(range, platformName, accountName),
+    ...monthlyAdjustmentRowsForRange(range, platformName, accountName)
+  ];
+}
+
+function brandsForRange(range, platformName=null, accountName=null){
+  let rows = state.brands.filter(x=>{
+    if(x.date) return dateInRange(x.date, range);
+    return monthInRange(x.year, x.month, range);
+  });
+
+  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=>x.platform === platformName);
+  if(accountName) rows = rows.filter(x=>(x.account || "") === accountName);
+
+  return rows;
+}
+
+function expensesForRange(range, platformName=null){
+  let rows = state.expenses.filter(x=>dateInRange(x.date, range));
+  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=>x.platform === platformName || x.platform === "General");
+  return rows;
+}
+
+function externalForRange(range, platformName=null){
+  if(platformName && platformName !== "All Platforms") return [];
+  return (state.external || []).filter(x=>dateInRange(x.date, range));
+}
+
+function periodFromRange(range, platformName=null, accountName=null){
+  return {
+    daily: adjustedDailyForRange(range, platformName, accountName),
+    brands: brandsForRange(range, platformName, accountName),
+    expenses: expensesForRange(range, platformName),
+    external: externalForRange(range, platformName)
+  };
+}
+
+function getPeriod(){
+  return periodFromRange(calcRange());
+}
+
+function getOverviewPeriod(){
+  const platform = overviewPlatform ? overviewPlatform() : "All Platforms";
+  return periodFromRange(calcRange(), platform);
+}
+
+function periodForFilters({yr=year(), monthName=null, platformName=null, accountName=null} = {}){
+  let range;
+  if(monthName){
+    range = monthDateRange(yr, monthName);
+  }else{
+    range = {start:`${yr}-01-01`, end:`${yr}-12-31`};
+  }
+  return periodFromRange(range, platformName, accountName);
+}
+
+function totals(d=getPeriod()){
+  const earnings = d.daily.reduce((s,x)=>s+(+x.earnings||0),0);
+  const tiktokEarnings = d.daily.filter(x=>x.platform==="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
+  const otherPlatformEarnings = d.daily.filter(x=>x.platform!=="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
+  const gmv = d.daily.reduce((s,x)=>s+(+x.gmv||0),0);
+  const videos = d.daily.reduce((s,x)=>s+(+x.videos||0),0);
+  const items = d.daily.reduce((s,x)=>s+(+x.items||0),0);
+
+  const brandGross = d.brands.reduce((s,x)=>s+(+x.amount||0),0);
+  const brandPaid = d.brands.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const owed = d.brands.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const expenses = d.expenses.reduce((s,x)=>s+(+x.amount||0),0);
+  const externalIncome = (d.external||[]).reduce((s,x)=>s+(+x.amount||0),0);
+
+  const brandTotal = brandPaid;
+  const totalIncome = earnings + brandPaid + externalIncome;
+  const taxRate = +(state.settings.taxRate ?? 22);
+  const taxes = totalIncome * (taxRate / 100);
+  const net = totalIncome - taxes - expenses;
+  const collected = totalIncome;
+
+  return {
+    earnings,
+    tiktokEarnings,
+    otherPlatformEarnings,
+    gmv,
+    videos,
+    items,
+    brandTotal,
+    brandGross,
+    brandPaid,
+    owed,
+    expenses,
+    externalIncome,
+    totalIncome,
+    gross:totalIncome,
+    allSocial:earnings + brandPaid,
+    collected,
+    net,
+    taxes,
+    taxRate
+  };
+}
+
+function monthlyTotalsForYear(){
+  const p = overviewPlatform ? overviewPlatform() : "All Platforms";
+  return months.map(m=>{
+    const period = periodForFilters({
+      yr: year(),
+      monthName: m,
+      platformName: p === "All Platforms" ? null : p
+    });
+    return {month:m, ...totals(period)};
+  });
+}
+
+function renderSummary(){
+  const t = totals(getOverviewPeriod());
+  const cards = [
+    ["Total Income",money(t.totalIncome),"gross"],
+    ["Net Total",money(t.net),"net"],
+    ["Est. Taxes",money(t.taxes),"taxes"],
+    ["GMV YTD",money(t.gmv),"gmv"],
+    ["Paid Brand Deals",money(t.brandPaid),"brands"],
+    ["Payments Owed",money(t.owed),"owed"],
+    ["Total Videos",number(t.videos),"videos"]
+  ];
+  $("summaryCards").innerHTML = cards.map(([l,v,k])=>`<div class="card metric"><div class="label">${l}</div><div class="value">${v}</div><svg class="mini-trend" id="spark-${k}" viewBox="0 0 160 42" preserveAspectRatio="none"></svg></div>`).join("");
+  renderIncomeForecast();
+  renderMonthlyIncomeStrip();
+  renderMonthlyAdjustmentTable();
+  renderCloseout();
+  renderAuditLog();
+  renderDashboardCharts();
+}
+
+
+
+
+
+function renderMonthlyIncomeStrip(){
+  const el = document.getElementById("monthlyIncomeStrip");
+  if(!el) return;
+
+  const yr = year();
+  const monthlyGoal = state.settings.monthlyGoal || 0;
+  const currentMonthName = curMonth();
+
+  el.innerHTML = months.map(m=>{
+    const t = totals(periodForFilters({yr:yr, monthName:m}));
+
+    const pct = monthlyGoal ? Math.min(100,(t.totalIncome/monthlyGoal)*100) : 0;
+    const isCurrent = m === currentMonthName && yr === new Date().getFullYear();
+
+    return `
+      <div class="month-card ${isCurrent ? "current" : ""}">
+        <b>${m.slice(0,3)}</b>
+        <strong>${money(t.totalIncome)}</strong>
+        <div class="mini-progress"><span style="width:${pct}%"></span></div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderIncomeForecast(){
+  const el = document.getElementById("incomeForecastCards");
+  if(!el) return;
+
+  const yr = year();
+  const full = totals(periodForFilters({yr:yr}));
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const monthIndex = currentYear === yr ? now.getMonth() + 1 : 12;
+  const monthsPassed = Math.max(1, monthIndex);
+  const monthsRemaining = Math.max(0, 12 - monthsPassed);
+
+  const projectedAnnual = (full.totalIncome / monthsPassed) * 12;
+  const annualGoal = state.settings.incomeGoal || 0;
+  const neededMonthly = monthsRemaining > 0 ? Math.max(0, (annualGoal - full.totalIncome) / monthsRemaining) : 0;
+  const goalGap = annualGoal ? projectedAnnual - annualGoal : 0;
+
+  const selectedMonthName = month() === "All" ? curMonth() : month();
+  const currentMonthTotal = totals(periodForFilters({yr:yr, monthName:selectedMonthName})).totalIncome;
+
+  el.innerHTML = [
+    ["Projected Annual", money(projectedAnnual), "If current pace continues"],
+    ["Monthly Needed", money(neededMonthly), "To hit annual goal"],
+    ["Goal Gap", money(goalGap), goalGap >= 0 ? "Projected above goal" : "Projected below goal"],
+    ["Selected Month", money(currentMonthTotal), selectedMonthName]
+  ].map(([label,value,helper])=>`
+    <div class="forecast-card">
+      <b>${label}</b>
+      <strong>${value}</strong>
+      <span>${helper}</span>
+    </div>
+  `).join("");
+}
+
+function renderDashboardCharts(){
+  const series = monthlyTotalsForYear();
+  renderIncomeTrend(series);
+  renderSparks(series);
+  renderPlatformMix();
+  renderOwedHighlights();
+  renderKeySignals(series);
+}
+
+function renderIncomeTrend(series){
+  const svg = $("incomeTrendChart");
+  if(!svg) return;
+  const w=900, h=220, pad=30;
+  const max = Math.max(1, ...series.flatMap(x=>[x.totalIncome,x.allSocial,x.net]));
+  const x = i => pad + i*((w-pad*2)/(series.length-1));
+  const y = v => h-pad - (v/max)*(h-pad*2);
+  const line = (key,color,width=3) => {
+    const pts = series.map((d,i)=>`${x(i)},${y(d[key])}`).join(" ");
+    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  };
+  const dots = (key,color) => series.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d[key])}" r="3" fill="${color}"><title>${d.month}: ${money(d[key])}</title></circle>`).join("");
+  const labels = series.map((d,i)=>`<text x="${x(i)}" y="214" text-anchor="middle" font-size="11" fill="#6b7280">${d.month.slice(0,3)}</text>`).join("");
+  const grid = [0,.25,.5,.75,1].map(p=>`<line x1="${pad}" x2="${w-pad}" y1="${pad+p*(h-pad*2)}" y2="${pad+p*(h-pad*2)}" stroke="#e5e7eb" stroke-width="1"/>`).join("");
+  svg.innerHTML = `
+    ${grid}
+    ${line("totalIncome","#293d7c",4)}
+    ${line("allSocial","#6ba6da",3)}
+    ${line("net","#f4c95d",3)}
+    ${dots("totalIncome","#293d7c")}
+    ${dots("allSocial","#6ba6da")}
+    ${dots("net","#f4c95d")}
+    ${labels}
+    <rect x="635" y="10" width="230" height="58" rx="8" fill="#ffffff" stroke="#d8deef"/>
+    <circle cx="668" cy="28" r="5" fill="#293d7c"/><text x="683" y="32" font-size="12" fill="#111827">Total Income</text>
+    <circle cx="668" cy="45" r="5" fill="#6ba6da"/><text x="683" y="49" font-size="12" fill="#111827">Income</text>
+    <circle cx="668" cy="62" r="5" fill="#f4c95d"/><text x="683" y="66" font-size="12" fill="#111827">Net</text>
+  `;
+}
+
+function renderSparks(series){
+  const map = {gross:"totalIncome", net:"net", taxes:"taxes", gmv:"gmv", brands:"brandTotal", owed:"owed", videos:"videos"};
+  Object.entries(map).forEach(([id,key])=>{
+    const svg = $(`spark-${id}`);
+    if(!svg) return;
+    const vals = series.map(x=>x[key]||0);
+    const max = Math.max(1,...vals), min = Math.min(...vals);
+    const w=160,h=42,p=4;
+    const pts = vals.map((v,i)=>{
+      const xx = p + i*((w-p*2)/(vals.length-1));
+      const yy = h-p - ((v-min)/(max-min||1))*(h-p*2);
+      return `${xx},${yy}`;
+    }).join(" ");
+    svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="#293d7c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><line x1="0" x2="160" y1="40" y2="40" stroke="#e5e7eb"/>`;
+  });
+}
+
+function renderPlatformMix(){
+  const d = getOverviewPeriod();
+  const totalsByPlatform = {};
+
+  d.daily.forEach(x=>{
+    totalsByPlatform[x.platform] = (totalsByPlatform[x.platform] || 0) + (+x.earnings || 0);
+  });
+
+  d.brands.forEach(x=>{
+    totalsByPlatform[x.platform] = (totalsByPlatform[x.platform] || 0) + (+x.amount || 0);
+  });
+
+  if((overviewPlatform ? overviewPlatform() : "All Platforms") === "All Platforms"){
+    (d.external || []).forEach(x=>{
+      totalsByPlatform["External Income"] = (totalsByPlatform["External Income"] || 0) + (+x.amount || 0);
+    });
+  }
+
+  const rows = Object.entries(totalsByPlatform)
+    .filter(([,value])=>Math.abs(value) > 0.0001)
+    .sort((a,b)=>b[1]-a[1]);
+
+  const max = Math.max(1,...rows.map(x=>Math.abs(x[1])));
+
+  $("platformMix").innerHTML = rows.length ? rows.map(([name,val])=>`
+    <div class="bar-row">
+      <strong>${esc(name)}</strong>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,(Math.abs(val)/max)*100)}%"></div></div>
+      <span>${money(val)}</span>
+    </div>`).join("") : `<p class="note">No income logged for this period yet.</p>`;
+}
+
+function renderOwedHighlights(){
+  const open = getOverviewPeriod().brands.filter(x=>x.status!=="Paid").sort((a,b)=>(b.amount||0)-(a.amount||0));
+  $("owedHighlights").innerHTML = open.length ? open.slice(0,5).map(x=>`
+    <div class="alert-item">
+      <strong>${esc(x.brand)} | ${money(x.amount)}</strong>
+      <span>${esc(x.product || "Brand deal")} | Due: ${esc(x.due || "No due date")} | ${esc(x.status)}</span>
+    </div>`).join("") : `<p class="note">No open brand payments for this period.</p>`;
+}
+
+function renderKeySignals(series){
+  const t = totals(getOverviewPeriod());
+  const current = month()==="All" ? series[series.length-1] : series.find(x=>x.month===month());
+  const prevIndex = current ? months.indexOf(current.month)-1 : -1;
+  const prev = prevIndex >= 0 ? series[prevIndex] : null;
+  const change = (a,b) => b ? (((a-b)/Math.max(1,b))*100).toFixed(1)+"%" : "N/A";
+  const avgVideoValue = t.videos ? money(t.allSocial/t.videos) : "$0.00";
+  $("keySignals").innerHTML = `
+    <div class="insight"><b>Revenue Change</b><span>${prev && current ? change(current.allSocial, prev.allSocial) : "N/A"} vs previous month</span></div>
+    <div class="insight"><b>Revenue / Video</b><span>${avgVideoValue} based on logged videos</span></div>
+    <div class="insight"><b>Collection Gap</b><span>${money(t.owed)} still unpaid</span></div>
+  `;
+}
+
+function renderSnapshot(){
+  if(!$("snapshotTable")) return;
+  const rows = [];
+  const d = getPeriod();
+  const accounts = ["DynamiteFinds","DynamiteFindsMore","Trisha"];
+  accounts.forEach(a=>{
+    const x = d.daily.filter(r=>r.platform==="TikTok Shop" && r.account===a);
+    rows.push([a,"Commission",money(sum(x,"earnings"))]);
+    rows.push([a,"GMV",money(sum(x,"gmv"))]);
+    rows.push([a,"Videos",number(sum(x,"videos"))]);
+    rows.push([a,"Items Sold",number(sum(x,"items"))]);
+  });
+  $("snapshotTable").innerHTML = table(["Account","Metric","Total"],rows);
+}
+function renderRecent(){
+  const p = overviewPlatform();
+  let daily = state.daily;
+  let brands = state.brands;
+  let expenses = state.expenses;
+  let external = state.external || [];
+
+  if(p !== "All Platforms"){
+    daily = daily.filter(x=>x.platform===p);
+    brands = brands.filter(x=>x.platform===p);
+    expenses = expenses.filter(x=>x.platform===p || x.platform==="General");
+    external = [];
+  }
+
+  const rows = [
+    ...daily.map(x=>({date:x.date,type:"Daily",name:`${x.platform} / ${x.account}`,amount:x.earnings,notes:x.notes})),
+    ...brands.map(x=>({date:x.date,type:"Brand Deal",name:x.brand,amount:x.amount,notes:x.status})),
+    ...expenses.map(x=>({date:x.date,type:"Expense",name:x.category,amount:-x.amount,notes:x.notes})),
+    ...external.map(x=>({date:x.date,type:"External Income",name:x.source,amount:x.amount,notes:"External"}))
+  ].filter(x=>dateInRange(x.date, getActiveDateRange())).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(x=>[x.date,x.type,x.name,money(x.amount),x.notes]);
+
+  $("recentTable").innerHTML = table(["Date","Type","Name","Amount","Notes"],rows);
+}
+
+
+function switchIncomeEntryType(){
+  const type = $("incomeEntryType") ? $("incomeEntryType").value : "daily";
+  document.querySelectorAll(".income-form-block").forEach(f=>f.classList.remove("active"));
+  if(type==="daily" && $("dailyForm")) $("dailyForm").classList.add("active");
+  if(type==="monthly" && $("monthlyAdjustmentForm")) $("monthlyAdjustmentForm").classList.add("active");
+  if(type==="external" && $("externalForm")) $("externalForm").classList.add("active");
+}
+
+function renderIncomeRecords(){
+  const tableEl = $("incomeRecordsTable");
+  if(!tableEl) return;
+
+  const type = $("incomeRecordTypeFilter") ? $("incomeRecordTypeFilter").value : "All";
+  const platformFilter = $("dailyPlatformFilter") ? $("dailyPlatformFilter").value : "All Platforms";
+  const accountFilter = $("dailyAccountFilter") ? $("dailyAccountFilter").value : "All Accounts";
+  const q = $("dailySearch") ? $("dailySearch").value.toLowerCase() : "";
+
+  let rows = [];
+
+  if(type==="All" || type==="daily"){
+    state.daily
+      .filter(inPeriod)
+      .filter(x=>platformFilter==="All Platforms" || x.platform===platformFilter)
+      .filter(x=>accountFilter==="All Accounts" || x.account===accountFilter)
+      .filter(x=>!q || `${x.notes||""} ${x.platform||""} ${x.account||""}`.toLowerCase().includes(q))
+      .forEach(x=>rows.push({
+        sortDate:x.date || `${x.year}-01-01`,
+        type:"Daily Entry",
+        month:x.month,
+        platform:x.platform,
+        account:x.account,
+        amount:x.earnings,
+        notes:x.notes || "",
+        actions:actions("Daily",x.id)
+      }));
+  }
+
+  if(type==="All" || type==="monthly"){
+    (state.monthlyAdjustments||[])
+      .filter(inPeriod)
+      .filter(x=>platformFilter==="All Platforms" || x.platform===platformFilter)
+      .filter(x=>accountFilter==="All Accounts" || x.account===accountFilter)
+      .filter(x=>!q || `${x.notes||""} ${x.platform||""} ${x.account||""}`.toLowerCase().includes(q))
+      .forEach(x=>rows.push({
+        sortDate:`${x.year}-${String(months.indexOf(x.month)+1).padStart(2,"0")}-01`,
+        type:"Monthly Total",
+        month:x.month,
+        platform:x.platform,
+        account:x.account,
+        amount:x.amount,
+        notes:`GMV: ${money(x.gmv||0)} | Videos: ${number(x.videos||0)} | Items: ${number(x.items||0)}${x.notes ? " | " + x.notes : ""}`,
+        actions:actions("MonthlyAdjustment",x.id)
+      }));
+  }
+
+  if(type==="All" || type==="external"){
+    (state.external||[])
+      .filter(inPeriod)
+      .filter(x=>!q || `${x.source||""}`.toLowerCase().includes(q))
+      .forEach(x=>rows.push({
+        sortDate:x.date || `${x.year}-01-01`,
+        type:"External Income",
+        month:x.month,
+        platform:"External",
+        account:x.source,
+        amount:x.amount,
+        notes:"",
+        actions:actions("External",x.id)
+      }));
+  }
+
+  rows.sort((a,b)=>String(b.sortDate).localeCompare(String(a.sortDate)));
+
+  tableEl.innerHTML = table(
+    ["Type","Month","Platform","Account / Source","Amount","Notes","Actions"],
+    rows.map(x=>[x.type,x.month,x.platform,x.account,money(x.amount),x.notes,x.actions]),
+    true
+  );
+}
+
+function resetMonthlyAdjustment(){
+  if(!$("monthlyAdjustmentForm")) return;
+  $("monthlyAdjustmentForm").reset();
+  $("monthlyAdjustmentId").value = "";
+  $("monthlyAdjustmentBtn").textContent = "Save Monthly Total";
+  $("monthlyAdjustmentMonth").value = curMonth();
+  $("monthlyAdjustmentYear").value = curYear();
+}
+
+function editMonthlyAdjustment(id){
+  const x = state.monthlyAdjustments.find(a=>a.id===id);
+  if(!x) return;
+  showPage("daily");
+  $("incomeEntryType").value="monthly";
+  switchIncomeEntryType();
+  $("monthlyAdjustmentId").value = x.id;
+  $("monthlyAdjustmentMonth").value = x.month;
+  $("monthlyAdjustmentYear").value = x.year;
+  $("monthlyAdjustmentPlatform").value = x.platform;
+  $("monthlyAdjustmentAccount").value = x.account;
+  $("monthlyAdjustmentAmount").value = x.amount;
+  $("monthlyAdjustmentGMV").value = x.gmv || 0;
+  $("monthlyAdjustmentVideos").value = x.videos || 0;
+  $("monthlyAdjustmentItems").value = x.items || 0;
+  $("monthlyAdjustmentNotes").value = x.notes || "";
+  $("monthlyAdjustmentBtn").textContent = "Update Monthly Total";
+}
+
+function deleteMonthlyAdjustment(id){
+  if(confirmDestructive("Delete this monthly total override?")){
+    state.monthlyAdjustments = state.monthlyAdjustments.filter(x=>x.id!==id);
+    logAction("Monthly Total Deleted", id);
+    save();
+    renderAll();
+    toast("Monthly total removed");
+  }
+}
+
+function renderMonthlyAdjustmentTable(){
+  if(!$("monthlyAdjustmentTable")) return;
+  const rows = state.monthlyAdjustments
+    .filter(inPeriod)
+    .sort((a,b)=> months.indexOf(a.month)-months.indexOf(b.month));
+
+  $("monthlyAdjustmentTable").innerHTML = table(
+    ["Month","Year","Platform","Account","Income Total","GMV Total","Videos Total","Items Total","Notes","Actions"],
+    rows.map(x=>[x.month,x.year,x.platform,x.account,money(x.amount),money(x.gmv||0),number(x.videos||0),number(x.items||0),x.notes||"",actions("MonthlyAdjustment",x.id)]),
+    true
+  );
+}
+
+function renderCloseout(){
+  if(!$("closeoutTable")) return;
+  const rows = months.map(m=>{
+    const c = state.closeouts.find(x=>+x.year===year() && x.month===m) || {};
+    const complete = c.tiktok && c.brands && c.expenses && c.backup;
+    return [
+      m,
+      c.tiktok ? "Yes" : "No",
+      c.brands ? "Yes" : "No",
+      c.expenses ? "Yes" : "No",
+      c.backup ? "Yes" : "No",
+      complete ? '<span class="closeout-complete">Complete</span>' : '<span class="closeout-open">Open</span>'
+    ];
+  });
+
+  $("closeoutTable").innerHTML = table(
+    ["Month","TikTok Totals","Brand Deals","Expenses","Backup","Status"],
+    rows,
+    true
+  );
+
+  const current = state.closeouts.find(x=>+x.year===+$("closeoutYear").value && x.month===$("closeoutMonth").value) || {};
+  $("closeoutTikTok").checked = !!current.tiktok;
+  $("closeoutBrands").checked = !!current.brands;
+  $("closeoutExpenses").checked = !!current.expenses;
+  $("closeoutBackup").checked = !!current.backup;
+}
+
+function renderAuditLog(){
+  if(!$("auditLogTable")) return;
+  const rows = (state.auditLog||[]).slice(0,30).map(x=>[
+    new Date(x.date).toLocaleString(),
+    x.action,
+    x.detail
+  ]);
+  $("auditLogTable").innerHTML = table(["Date","Action","Details"], rows);
+}
+
+function renderDailyTable(){
+  if($("dailyTable")){
+    let rows = state.daily.filter(inPeriod);
+    const pf = $("dailyPlatformFilter") ? $("dailyPlatformFilter").value : "All Platforms";
+    const af = $("dailyAccountFilter") ? $("dailyAccountFilter").value : "All Accounts";
+    const q = $("dailySearch") ? $("dailySearch").value.toLowerCase() : "";
+    if(pf!=="All Platforms") rows=rows.filter(x=>x.platform===pf);
+    if(af!=="All Accounts") rows=rows.filter(x=>x.account===af);
+    
+    if(q) rows=rows.filter(x=>(x.notes||"").toLowerCase().includes(q));
+    rows.sort((a,b)=>b.date.localeCompare(a.date));
+    $("dailyTable").innerHTML = table(["Date","Month","Platform","Account","Earnings","GMV","Videos","Items","Notes","Actions"],
+      rows.map(x=>[x.date,x.month,x.platform,x.account,money(x.earnings),money(x.gmv),number(x.videos),number(x.items),x.notes,actions("Daily",x.id)]), true);
+  }
+  renderIncomeRecords();
+}
+function renderGrids(){
+  $("tiktokGrid").innerHTML = monthlyGrid(state.settings.accounts, true);
+  $("socialGrid").innerHTML = socialGrid();
+  if($("excelTotalsGrid")) $("excelTotalsGrid").innerHTML = excelTotalsGrid();
+}
+function monthlyGrid(names,isTikTok){
+  let html = `<thead><tr><th>Account</th><th>Metric</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
+  names.forEach((name,idx)=>{
+    const cls = idx===0?"green":idx===1?"blueRow":"yellow";
+    ["earnings","gmv","brands","videos","items"].forEach(metric=>{
+      const vals = months.map(m=>{
+        if(metric==="brands"){
+          return brandsForRange(monthDateRange(year(), m), "TikTok Shop", name).reduce((s,x)=>s+(+x.amount||0),0);
+        }
+        const period = periodForFilters({yr:year(), monthName:m, platformName:"TikTok Shop", accountName:name});
+        return sum(period.daily,metric);
+      });
+      const total = vals.reduce((a,b)=>a+b,0);
+      html += `<tr class="${cls}"><td>${name}</td><td>${label(metric)}</td>${vals.map(v=>`<td>${format(metric,v)}</td>`).join("")}<td>${format(metric,total)}</td></tr>`;
+    });
+  });
+  html += `</tbody>`;
+  return html;
+}
+function socialGrid(){
+  const plats = state.settings.platforms.filter(p=>p!=="TikTok Shop");
+  let html = `<thead><tr><th>Platform</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
+  plats.forEach((p,i)=>{
+    const vals = months.map(m=>sum(periodForFilters({yr:year(), monthName:m, platformName:p}).daily,"earnings"));
+    const total = vals.reduce((a,b)=>a+b,0);
+    html += `<tr class="${i%2?"green":"peach"}"><td>${p}</td>${vals.map(v=>`<td>${money(v)}</td>`).join("")}<td>${money(total)}</td></tr>`;
+  });
+  html += `<tr class="total-row"><td>Total Monthly</td>${months.map(m=>money(sum(periodForFilters({yr:year(), monthName:m}).daily.filter(x=>x.platform!=="TikTok Shop"),"earnings"))).map(v=>`<td>${v}</td>`).join("")}<td>${money(sum(periodForFilters({yr:year()}).daily.filter(x=>x.platform!=="TikTok Shop"),"earnings"))}</td></tr>`;
+  html += `</tbody>`;
+  return html;
+}
+
+function excelTotalsGrid(){
+  const rows = [
+    ["All Social", "allSocial"],
+    ["External Monthly Only", "externalIncome"],
+    ["Total Income", "totalIncome"],
+    ["Estimated Taxes", "taxes"],
+    ["Expenses", "expenses"],
+    ["Net Total", "net"]
+  ];
+  let html = `<thead><tr><th>Metric</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
+  rows.forEach(([labelName,key])=>{
+    const vals = months.map(m=>{
+      const d = {
+        daily: state.daily.filter(x=>+x.year===year() && x.month===m),
+        brands: state.brands.filter(x=>+x.year===year() && x.month===m),
+        expenses: state.expenses.filter(x=>+x.year===year() && x.month===m),
+      external: (state.external||[]).filter(x=>+x.year===year() && x.month===m),
+        external: state.external.filter(x=>+x.year===year() && x.month===m)
+      };
+      return totals(d)[key] || 0;
+    });
+    const total = key==="taxes" || key==="net"
+      ? totals({
+          daily: state.daily.filter(x=>+x.year===year()),
+          brands: state.brands.filter(x=>+x.year===year()),
+          expenses: state.expenses.filter(x=>+x.year===year()),
+          external: state.external.filter(x=>+x.year===year())
+        })[key]
+      : vals.reduce((a,b)=>a+b,0);
+    html += `<tr class="${labelName==="Total Income"?"total-row":""}"><td>${labelName}</td>${vals.map(v=>`<td>${money(v)}</td>`).join("")}<td>${money(total)}</td></tr>`;
+  });
+  html += `</tbody>`;
+  return html;
+}
+
+function renderPlatformTable(){
+  const rows = state.settings.platforms.map(p=>{
+    const d = getPeriod().daily.filter(x=>x.platform===p);
+    return [p,money(sum(d,"earnings")),money(sum(d,"gmv")),number(sum(d,"videos")),number(sum(d,"items"))];
+  });
+  $("platformTable").innerHTML = table(["Platform","Earnings","GMV","Videos","Items Sold"],rows);
+}
+
+function renderBrandAnalytics(){
+  if(!document.getElementById("brandDealAnalyticsCards")) return;
+
+  const rows = state.brands.filter(inPeriod);
+  const total = rows.reduce((s,x)=>s+(+x.amount||0),0);
+  const paid = rows.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const unpaid = rows.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const avg = rows.length ? total / rows.length : 0;
+  const paidPct = rows.length ? (rows.filter(x=>x.status==="Paid").length / rows.length) * 100 : 0;
+
+  const byBrand = {};
+  rows.forEach(x=>{
+    const name = x.brand || "Unknown";
+    byBrand[name] = (byBrand[name] || 0) + (+x.amount || 0);
+  });
+  const topBrand = Object.entries(byBrand).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById("brandDealAnalyticsCards").innerHTML = [
+    ["Total Brand Revenue", money(total)],
+    ["Average Deal Size", money(avg)],
+    ["Paid Brand Revenue", money(paid)],
+    ["Payments Owed", money(unpaid)],
+    ["Deal Count", rows.length],
+    ["Paid Deal %", `${paidPct.toFixed(1)}%`]
+  ].map(([label,value])=>`<div class="report-card"><b>${label}</b><strong>${value}</strong></div>`).join("");
+
+  const statusRows = ["Paid","Pending","Overdue","Follow-Up"].map(statusName=>{
+    const filtered = rows.filter(x=>x.status===statusName);
+    return [statusName, filtered.length, money(filtered.reduce((s,x)=>s+(+x.amount||0),0))];
+  });
+
+  const brandRows = Object.entries(byBrand)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,8)
+    .map(([brand,amount])=>[brand, money(amount)]);
+
+  document.getElementById("brandDealAnalyticsTable").innerHTML =
+    table(["Status","Deal Count","Amount"], statusRows) +
+    `<tbody><tr class="subhead"><td colspan="3">Top Brands</td></tr>` +
+    (brandRows.length ? brandRows.map(r=>`<tr><td>${r[0]}</td><td colspan="2">${r[1]}</td></tr>`).join("") : `<tr><td colspan="3">No brand data yet</td></tr>`) +
+    `</tbody>`;
+}
+
+function renderBrandTable(){
+  const rows = state.brands.filter(inPeriod).sort((a,b)=>b.date.localeCompare(a.date));
+  $("brandTable").innerHTML = table(["Date","Month","Platform","Account","Brand","Contact","Product","Amount","Due","Status","Usage Rights","Contract","Notes","Actions"],
+    rows.map(x=>[x.date,x.month,x.platform,x.account||"",x.brand,x.contact||"",x.product,money(x.amount),x.due,status(x.status),x.usage||"Organic Only",x.contract&&x.contract.data?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,actions("Brand",x.id)]), true);
+}
+function renderExpenseTable(){
+  const rows = state.expenses.filter(inPeriod).sort((a,b)=>b.date.localeCompare(a.date));
+  $("expenseTable").innerHTML = table(["Date","Month","Category","Platform","Amount","Receipt","Notes","Actions"],
+    rows.map(x=>[x.date,x.month,x.category,x.platform,money(x.amount),x.receipt&&x.receipt.data?`<button class="light" onclick="viewReceipt('${x.id}')">View</button>`:"",x.notes,actions("Expense",x.id)]), true);
+}
+function renderPayments(){
+  const rows = state.brands.filter(x=>inPeriod(x) && x.status!=="Paid");
+  $("paymentsTable").innerHTML = table(["Brand","Account","Contact","Product","Platform","Amount Owed","Due","Status","Usage","Contract","Notes","Copy"],
+    rows.map(x=>[x.brand,x.account||"",x.contact||"",x.product,x.platform,money(x.amount),x.due,status(x.status),x.usage||"Organic Only",x.contract&&x.contract.data?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,`<button class="light" onclick="copyPay('${x.id}')">Copy</button>`]), true);
+}
+function table(headers, rows, raw=false){
+  return `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.map(c=>`<td>${raw?c:esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${headers.length}" class="center note">No data yet</td></tr>`}</tbody>`;
+}
+function sum(arr,key){return arr.reduce((s,x)=>s+(+x[key]||0),0)}
+function label(m){return {earnings:"Commission",gmv:"GMV",brands:"Brand Deals",videos:"Videos",items:"Items Sold"}[m]}
+function format(metric,v){return ["videos","items"].includes(metric)?number(v):money(v)}
+function status(s){return `<span class="status ${s.replaceAll(" ","-")}">${esc(s)}</span>`}
+function actions(type,id){return `<span class="actions"><button class="light" onclick="edit${type}('${id}')">Edit</button><button class="danger" onclick="delete${type}('${id}')">Delete</button></span>`}
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  $(id).classList.add("active");
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+  [...document.querySelectorAll(".tabs button")].find(b=>b.getAttribute("onclick").includes(id))?.classList.add("active");
+}
+function resetDaily(){
+  $("dailyForm").reset(); $("dailyId").value=""; $("dailyBtn").textContent="Save Daily Entry";
+  $("dailyDate").value=today(); $("dailyMonth").value=curMonth(); $("dailyYear").value=curYear();
+}
+function resetBrand(){
+  $("brandForm").reset(); $("brandId").value=""; $("brandBtn").textContent="Save Brand Deal";
+  $("brandDate").value=today(); $("brandMonth").value=curMonth(); $("brandYear").value=curYear();
+  pendingBrandContract = null;
+  if($("brandContract")) $("brandContract").value = "";
+  renderBrandContractPreview(null);
+}
+function resetExpense(){
+  $("expenseForm").reset(); $("expenseId").value=""; $("expenseBtn").textContent="Save Expense";
+  $("expenseDate").value=today(); $("expenseMonth").value=curMonth(); $("expenseYear").value=curYear();
+  pendingExpenseReceipt = null;
+  if($("expenseReceipt")) $("expenseReceipt").value = "";
+  renderReceiptPreview(null);
+}
+function editDaily(id){
+  const x=state.daily.find(a=>a.id===id); if(!x)return; showPage("daily");
+  $("incomeEntryType").value="daily";
+  switchIncomeEntryType();
+  $("dailyId").value=x.id; $("dailyDate").value=x.date; $("dailyMonth").value=x.month; $("dailyYear").value=x.year; $("dailyPlatform").value=x.platform; $("dailyAccount").value=x.account; $("dailyEarnings").value=x.earnings; $("dailyGMV").value=x.gmv; $("dailyVideos").value=x.videos; $("dailyItems").value=x.items; $("dailyNotes").value=x.notes; $("dailyBtn").textContent="Update Daily Entry";
+}
+function editBrand(id){
+  const x=state.brands.find(a=>a.id===id); if(!x)return; showPage("brands");
+  $("brandId").value=x.id; $("brandDate").value=x.date; $("brandMonth").value=x.month; $("brandYear").value=x.year; $("brandPlatform").value=x.platform; $("brandAccount").value=x.account||state.settings.accounts[0]||""; $("brandName").value=x.brand; $("brandContact").value=x.contact||""; $("brandProduct").value=x.product; $("brandAmount").value=x.amount; $("brandDue").value=x.due; $("brandStatus").value=x.status; $("brandUsage").value=x.usage||"Organic Only"; pendingBrandContract = null; if($("brandContract")) $("brandContract").value = ""; renderBrandContractPreview(x.contract); $("brandNotes").value=x.notes; $("brandBtn").textContent="Update Brand Deal";
+}
+function editExpense(id){
+  const x=state.expenses.find(a=>a.id===id); if(!x)return; showPage("expenses");
+  $("expenseId").value=x.id; $("expenseDate").value=x.date; $("expenseMonth").value=x.month; $("expenseYear").value=x.year; $("expenseCategory").value=x.category; $("expensePlatform").value=x.platform; $("expenseAmount").value=x.amount; $("expenseNotes").value=x.notes; pendingExpenseReceipt = null; if($("expenseReceipt")) $("expenseReceipt").value = ""; renderReceiptPreview(x.receipt); $("expenseBtn").textContent="Update Expense";
+}
+function deleteDaily(id){if(confirmDestructive("Delete this daily entry?")){state.daily=state.daily.filter(x=>x.id!==id);save();renderAll()}}
+function deleteBrand(id){if(confirmDestructive("Delete this brand deal?")){state.brands=state.brands.filter(x=>x.id!==id);save();renderAll()}}
+function deleteExpense(id){if(confirmDestructive("Delete this expense?")){state.expenses=state.expenses.filter(x=>x.id!==id);save();renderAll()}}
+function copyPay(id){
+  const x=state.brands.find(b=>b.id===id);
+  const msg=`Hi ${x.brand},
+
+I hope you're doing well. I wanted to follow up on the outstanding payment for our recent collaboration.
+
+Amount due: ${money(x.amount)}
+Product/Campaign: ${x.product || "N/A"}
+
+Please let me know if anything else is needed from my end.
+
+Thank you,
+Taylor`;
+  navigator.clipboard.writeText(msg); toast("Follow-up copied");
+}
+
+
+function addAccount(){
+  const name = $("newAccountName").value.trim();
+  if(!name) return toast("Enter an account name");
+  if(state.settings.accounts.some(a=>a.toLowerCase()===name.toLowerCase())){
+    return toast("That account already exists");
+  }
+  state.settings.accounts.push(name);
+  $("newAccountName").value = "";
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Account added");
+}
+
+function removeAccount(name){
+  const used = state.daily.some(x=>x.account===name);
+  const msg = used
+    ? `${name} has saved entries. Removing it will only remove it from future dropdowns. Existing entries will stay in reports. Continue?`
+    : `Remove ${name}?`;
+  if(!confirmDestructive(msg)) return;
+  state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Account removed");
+}
+
+function addPlatform(){
+  const name = $("newPlatformName").value.trim();
+  if(!name) return toast("Enter a platform name");
+  if(state.settings.platforms.some(p=>p.toLowerCase()===name.toLowerCase())){
+    return toast("That platform already exists");
+  }
+  state.settings.platforms.push(name);
+  $("newPlatformName").value = "";
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Platform added");
+}
+
+function removePlatform(name){
+  const used = state.daily.some(x=>x.platform===name) || state.brands.some(x=>x.platform===name) || state.expenses.some(x=>x.platform===name);
+  const msg = used
+    ? `${name} has saved entries. Removing it will only remove it from future dropdowns. Existing entries will stay in reports. Continue?`
+    : `Remove ${name}?`;
+  if(!confirmDestructive(msg)) return;
+  state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Platform removed");
+}
+
+function addExpenseCategory(){
+  const name = $("newCategoryName").value.trim();
+  if(!name) return toast("Enter a category name");
+  if(state.settings.expenseCategories.some(c=>c.toLowerCase()===name.toLowerCase())){
+    return toast("That category already exists");
+  }
+  state.settings.expenseCategories.push(name);
+  $("newCategoryName").value = "";
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Category added");
+}
+
+function removeExpenseCategory(name){
+  const used = state.expenses.some(x=>x.category===name);
+  const msg = used
+    ? `${name} has saved expenses. Removing it only removes it from future dropdowns. Existing expenses stay in reports. Continue?`
+    : `Remove ${name}?`;
+  if(!confirmDestructive(msg)) return;
+  state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Category removed");
+}
+
+function addUsageRight(){
+  const name = $("newUsageName").value.trim();
+  if(!name) return toast("Enter a usage right");
+  if(state.settings.usageRights.some(u=>u.toLowerCase()===name.toLowerCase())){
+    return toast("That usage right already exists");
+  }
+  state.settings.usageRights.push(name);
+  $("newUsageName").value = "";
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Usage right added");
+}
+
+function removeUsageRight(name){
+  const used = state.brands.some(x=>x.usage===name);
+  const msg = used
+    ? `${name} is used on saved brand deals. Removing it only removes it from future dropdowns. Existing deals stay in reports. Continue?`
+    : `Remove ${name}?`;
+  if(!confirmDestructive(msg)) return;
+  state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
+  save();
+  fillDynamicDropdowns();
+  renderAll();
+  toast("Usage right removed");
+}
+
+function renderSettings(){
+  if($("settingsTaxRate")) $("settingsTaxRate").value = state.settings.taxRate ?? 22;
+  if($("settingsIncomeGoal")) $("settingsIncomeGoal").value = state.settings.incomeGoal ?? 250000;
+  if($("settingsMonthlyGoal")) $("settingsMonthlyGoal").value = state.settings.monthlyGoal ?? 20000;
+  if(!$("accountsSettingsTable")) return;
+
+  $("accountsSettingsTable").innerHTML = table(["Account","Used Entries","Action"],
+    state.settings.accounts.map(a=>{
+      const count = state.daily.filter(x=>x.account===a).length;
+      return [a, count, `<button class="danger" onclick="removeAccount('${String(a).replaceAll("'","\\'")}')">Remove</button>`];
+    }), true);
+
+  $("platformsSettingsTable").innerHTML = table(["Platform","Used Entries","Action"],
+    state.settings.platforms.map(p=>{
+      const count = state.daily.filter(x=>x.platform===p).length + state.brands.filter(x=>x.platform===p).length + state.expenses.filter(x=>x.platform===p).length;
+      return [p, count, `<button class="danger" onclick="removePlatform('${String(p).replaceAll("'","\\'")}')">Remove</button>`];
+    }), true);
+}
+
+
+
+
+
+
+
+function resetExternal(){
+  if(!$("externalForm")) return;
+  $("externalForm").reset();
+  $("externalId").value="";
+  $("externalBtn").textContent="Save External Income";
+  $("externalDate").value=today();
+  $("externalMonth").value=curMonth();
+  $("externalYear").value=curYear();
+}
+function editExternal(id){
+  const x=state.external.find(a=>a.id===id); if(!x)return; showPage("daily");
+  $("incomeEntryType").value="external";
+  switchIncomeEntryType();
+  $("externalId").value=x.id; $("externalDate").value=x.date; $("externalMonth").value=x.month; $("externalYear").value=x.year; $("externalSource").value=x.source; $("externalAmount").value=x.amount; $("externalBtn").textContent="Update External Income";
+}
+function deleteExternal(id){
+  if(confirmDestructive("Delete this external income entry?")){
+    state.external=state.external.filter(x=>x.id!==id);
+    save(); renderAll();
+  }
+}
+function renderExternalTable(){
+  if(!$("externalTable")) return;
+  const rows = state.external.filter(inPeriod).sort((a,b)=>b.date.localeCompare(a.date));
+  $("externalTable").innerHTML = table(["Date","Month","Source","Amount","Actions"],
+    rows.map(x=>[x.date,x.month,x.source,money(x.amount),actions("External",x.id)]), true);
+}
+
+
+
+function renderDataCheck(){
+  if(!$("dataCheckReport")) return;
+
+  const yr = year();
+  const rows = months.map(m=>{
+    const range = monthDateRange(yr, m);
+    const period = periodForFilters({yr:yr, monthName:m});
+    const t = totals(period);
+
+    const rawDailyIncome = baseDailyRowsForRange(range).reduce((s,x)=>s+(+x.earnings||0),0);
+    const monthlyAdjIncome = (state.monthlyAdjustments||[])
+      .filter(x=>+x.year===yr && x.month===m)
+      .reduce((s,x)=>s+(+x.amount||0),0);
+    const brandIncome = brandsForRange(range).reduce((s,x)=>s+(+x.amount||0),0);
+    const externalIncome = externalForRange(range).reduce((s,x)=>s+(+x.amount||0),0);
+
+    return [
+      m,
+      money(rawDailyIncome),
+      monthlyAdjIncome ? money(monthlyAdjIncome) : "-",
+      money(brandIncome),
+      money(externalIncome),
+      money(t.totalIncome),
+      money(t.gmv),
+      number(t.videos),
+      number(t.items)
+    ];
+  });
+
+  $("dataCheckReport").innerHTML = table(
+    ["Month","Raw Daily Income","Monthly Override","Brand Deals","External Income","Tracker Total Income","Tracker GMV","Tracker Videos","Tracker Items"],
+    rows
+  );
+}
+
+function renderReports(){
+  const yr = year();
+  const selected = totals(getPeriod());
+  if($("selectedRangeLabel")) $("selectedRangeLabel").textContent = activePeriodLabel();
+  if($("selectedRangeReport")){
+    $("selectedRangeReport").innerHTML = table(["Metric","Selected Range"],[
+      ["Total Income", money(selected.totalIncome)],
+      ["Net", money(selected.net)],
+      ["Expenses", money(selected.expenses)],
+      ["GMV", money(selected.gmv)],
+      ["Videos", number(selected.videos)],
+      ["Items Sold", number(selected.items)],
+      ["Paid Brand Deals", money(selected.brandPaid)],
+      ["Payments Owed", money(selected.owed)]
+    ]);
+  }
+
+  const monthRows = months.map((m,i)=>{
+    const d = {
+      daily: state.daily.filter(x=>x.year==yr && x.month===m),
+      brands: state.brands.filter(x=>x.year==yr && x.month===m),
+      expenses: state.expenses.filter(x=>x.year==yr && x.month===m),
+      external: (state.external||[]).filter(x=>x.year==yr && x.month===m)
+    };
+    const t = totals(d);
+    return {
+      month:m,
+      income:t.totalIncome,
+      expenses:t.expenses,
+      net:t.net,
+      videos:t.videos,
+      gmv:t.gmv,
+      brandDeals:t.brandPaid,
+      paymentsOwed:t.owed
+    };
+  });
+
+  $("monthlyReport").innerHTML = table(
+    ["Month","Income","Expenses","Net","Videos","GMV","Brand Deals","Payments Owed"],
+    monthRows.map(r=>[r.month,money(r.income),money(r.expenses),money(r.net),r.videos,money(r.gmv),money(r.brandDeals),money(r.paymentsOwed)])
+  );
+
+  const full = totals(periodForFilters({yr:yr}));
+
+  const annualGoal = state.settings.incomeGoal || 0;
+  const monthlyGoal = state.settings.monthlyGoal || 0;
+
+  const monthsPassed = new Date().getMonth()+1;
+  const monthsRemaining = 12 - monthsPassed;
+
+  const paceNeededMonthly = monthsRemaining > 0 ? (annualGoal - full.totalIncome) / monthsRemaining : 0;
+
+  const forecastAnnual = monthsPassed > 0 ? (full.totalIncome / monthsPassed) * 12 : 0;
+
+  const currentMonthName = month()==="All" ? curMonth() : month();
+  const idx = months.indexOf(currentMonthName);
+  const current = monthRows[idx] || {};
+  const previous = idx > 0 ? monthRows[idx-1] : null;
+
+  const changeIncome = previous ? ((current.income-previous.income)/Math.abs(previous.income||1))*100 : 0;
+
+  $("reportHighlights").innerHTML = [
+    ["Range Income", money(selected.totalIncome), null],
+    ["Range Net", money(selected.net), null],
+    ["Range GMV", money(selected.gmv), null],
+    ["Payments Owed", money(selected.owed), null]
+  ].map(([label,value,pct])=>`<div class="report-card"><b>${label}</b><strong>${value}</strong>${pct?`<div class="progress-mini"><span style="width:${Math.min(100,pct)}%"></span></div>`:""}</div>`).join("");
+
+  $("annualReport").innerHTML = table(
+    ["Metric","Value"],
+    [
+      ["Total Income", money(full.totalIncome)],
+      ["Total Expenses", money(full.expenses)],
+      ["Net Profit", money(full.net)],
+      ["Projected Annual (Forecast)", money(forecastAnnual)],
+      ["Monthly Needed to Hit Goal", money(paceNeededMonthly)]
+    ]
+  );
+}
+
+
+function bestMonth(rows){
+  return [...rows].sort((a,b)=>b.income-a.income)[0] || {month:"N/A",income:0};
+}
+function pctChange(current, previous){
+  if(!previous) return "N/A";
+  return `${(((current-previous)/Math.abs(previous))*100).toFixed(1)}%`;
+}
+function renderChangeReport(rows){
+  const m = month()==="All" ? curMonth() : month();
+  const idx = months.indexOf(m);
+  const current = rows[idx] || {income:0,expenses:0,net:0,videos:0,gmv:0,brandDeals:0};
+  const previous = idx>0 ? rows[idx-1] : null;
+
+  $("changeReport").innerHTML = table(
+    ["Metric","Current Month","Previous Month","Change"],
+    [
+      ["Income", money(current.income), previous?money(previous.income):"N/A", previous?pctChange(current.income,previous.income):"N/A"],
+      ["Net", money(current.net), previous?money(previous.net):"N/A", previous?pctChange(current.net,previous.net):"N/A"],
+      ["GMV", money(current.gmv), previous?money(previous.gmv):"N/A", previous?pctChange(current.gmv,previous.gmv):"N/A"],
+      ["Videos", current.videos, previous?previous.videos:"N/A", previous?pctChange(current.videos,previous.videos):"N/A"],
+      ["Brand Deals", money(current.brandDeals), previous?money(previous.brandDeals):"N/A", previous?pctChange(current.brandDeals,previous.brandDeals):"N/A"]
+    ]
+  );
+}
+function daysBetween(a,b){
+  const da = new Date(a);
+  const db = new Date(b);
+  if(isNaN(da) || isNaN(db)) return 0;
+  return Math.floor((db-da)/(1000*60*60*24));
+}
+function paymentAgingTable(yr){
+  const todayDate = new Date().toISOString().slice(0,10);
+  const unpaid = state.brands.filter(x=>x.year==yr && x.status!=="Paid");
+  const buckets = {
+    "0-30 Days":0,
+    "31-60 Days":0,
+    "60+ Days":0,
+    "No Due Date":0
+  };
+
+  unpaid.forEach(x=>{
+    if(!x.due){ buckets["No Due Date"] += +x.amount||0; return; }
+    const age = daysBetween(x.due,todayDate);
+    if(age <= 30) buckets["0-30 Days"] += +x.amount||0;
+    else if(age <= 60) buckets["31-60 Days"] += +x.amount||0;
+    else buckets["60+ Days"] += +x.amount||0;
+  });
+
+  return table(
+    ["Aging Bucket","Amount Owed"],
+    Object.entries(buckets).map(([k,v])=>[k,money(v)])
+  );
+}
+function exportReportCSV(filename, headers, rows){
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\\n");
+  download(new Blob([csv],{type:"text/csv"}),filename);
+}
+
+function exportSelectedRangeCSV(){
+  const t = totals(getPeriod());
+  exportReportCSV(`income-tracker-selected-range-${today()}.csv`,["Metric","Value"],[
+    ["Date Range", activePeriodLabel()],
+    ["Total Income",t.totalIncome],
+    ["Net",t.net],
+    ["Expenses",t.expenses],
+    ["GMV",t.gmv],
+    ["Videos",t.videos],
+    ["Items Sold",t.items],
+    ["Paid Brand Deals",t.brandPaid],
+    ["Payments Owed",t.owed]
+  ]);
+}
+
+function exportMonthlyReportCSV(){
+  const yr = year();
+  const rows = months.map(m=>{
+    const t = totals(periodForFilters({yr:yr, monthName:m}));
+    return [m,t.totalIncome,t.expenses,t.net,t.videos,t.gmv,t.brandPaid,t.owed];
+  });
+  exportReportCSV(`income-tracker-monthly-report-${yr}.csv`,["Month","Income","Expenses","Net","Videos","GMV","Brand Deals","Payments Owed"],rows);
+}
+function exportAnnualReportCSV(){
+  const yr = year();
+  const t = totals({
+    daily: state.daily.filter(x=>x.year==yr),
+    brands: state.brands.filter(x=>x.year==yr),
+    expenses: state.expenses.filter(x=>x.year==yr),
+    external: (state.external||[]).filter(x=>x.year==yr)
+  });
+  exportReportCSV(`income-tracker-annual-summary-${yr}.csv`,["Metric","Value"],[
+    ["Total Income",t.totalIncome],
+    ["Total Expenses",t.expenses],
+    ["Net Profit",t.net],
+    ["Total Videos",t.videos],
+    ["Total GMV",t.gmv],
+    ["Paid Brand Deal Revenue",t.brandPaid],
+    ["Payments Owed",t.owed]
+  ]);
+}
+function exportPlatformReportCSV(){
+  const yr = year();
+  const platforms = [...new Set([...state.settings.platforms, ...state.daily.map(x=>x.platform), ...state.brands.map(x=>x.platform)])];
+  const rows = platforms.map(p=>{
+    const t = totals({
+      daily: state.daily.filter(x=>x.platform===p && x.year==yr),
+      brands: state.brands.filter(x=>x.platform===p && x.year==yr),
+      expenses: state.expenses.filter(x=>x.platform===p && x.year==yr),
+      external:[]
+    });
+    return [p,t.totalIncome,t.net,t.videos,t.videos?t.totalIncome/t.videos:0,t.gmv,t.owed];
+  });
+  exportReportCSV(`income-tracker-platform-report-${yr}.csv`,["Platform","Income","Net","Videos","Revenue/Video","GMV","Payments Owed"],rows);
+}
+
+
+
+function pricingKeys(){
+  return Object.keys(defaultPricing());
+}
+
+function fillPricingForm(){
+  const p = state.settings.pricing;
+  pricingKeys().forEach(k=>{
+    if($(k)) $(k).value = p[k];
+  });
+  renderPricing();
+  renderDealCalculator();
+}
+
+function savePricingForm(){
+  pricingKeys().forEach(k=>{
+    if($(k)) state.settings.pricing[k] = +$(k).value || 0;
+  });
+  save();
+  renderPricing();
+  renderDealCalculator();
+}
+
+function resetPricingDefaults(){
+  if(!confirmDestructive("Reset pricing to the default reference rates?")) return;
+  state.settings.pricing = defaultPricing();
+  fillPricingForm();
+  save();
+  toast("Pricing reset");
+}
+
+function renderPricing(){
+  if(!$("pricingCards")) return;
+  const p = state.settings.pricing;
+  $("pricingCards").innerHTML = [
+    ["Single Video",money(p.singleVideo)],
+    ["3 Video Bundle",money(p.bundle3)],
+    ["5 Video Bundle",money(p.bundle5)],
+    ["Scale Retainer",money(p.scaleRetainer)]
+  ].map(([label,value])=>`<div class="pricing-mini-card"><b>${label}</b><strong>${value}</strong></div>`).join("");
+}
+
+function renderDealCalculator(){
+  if(!$("dealProjectType")) return;
+  const p = state.settings.pricing;
+  const project = $("dealProjectType").value;
+  const usage = $("dealUsage").value;
+  const qty = Math.max(1,+$("dealQuantity").value || 1);
+
+  const baseRate = +p[project] || 0;
+  const basePrice = project === "singleVideo" ? baseRate * qty : baseRate;
+  const usagePrice = usage === "none" ? 0 : (+p[usage] || 0);
+
+  let addOns = 0;
+  if($("dealProductPhotos").checked) addOns += +p.productPhotos || 0;
+  if($("dealRawFootage").checked) addOns += +p.rawFootage || 0;
+  if($("dealRushFee").checked) addOns += +p.rushFee || 0;
+
+  $("calcBasePrice").textContent = money(basePrice);
+  $("calcUsagePrice").textContent = money(usagePrice);
+  $("calcAddOns").textContent = money(addOns);
+  $("calcDealTotal").textContent = money(basePrice + usagePrice + addOns);
+}
+
+
+function exportJSON(){
+  logAction("JSON Backup Exported", today());
+  save();
+  download(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),`income-tracker-backup-${today()}.json`);
+}
+
+function exportCSV(){
+  const rows=[["Section","Date","Month","Year","Platform","Account","Brand","Contact","Type/Product","Amount","GMV","Videos","Items","Status","Due","Usage Rights","Receipt Attached","Notes"]];
+  state.daily.forEach(x=>rows.push(["Daily",x.date,x.month,x.year,x.platform,x.account,"","","Commission",x.earnings,x.gmv,x.videos,x.items,"","","","",x.notes]));
+  state.brands.forEach(x=>rows.push(["Brand Deal",x.date,x.month,x.year,x.platform,x.account||"",x.brand,x.contact||"",x.product,x.amount,"","","",x.status,x.due,x.usage||"Organic Only","",x.notes]));
+  state.expenses.forEach(x=>rows.push(["Expense",x.date,x.month,x.year,x.platform,"","","",x.category,x.amount,"","","","","","",x.receipt&&x.receipt.data?"Yes":"No",x.notes]));
+  state.external.forEach(x=>rows.push(["External Income",x.date,x.month,x.year,"External","",x.source,"","External Income",x.amount,"","","","","","","", "Excluded from All Social"]));
+  (state.monthlyAdjustments||[]).forEach(x=>rows.push(["Monthly Total","",x.month,x.year,x.platform,x.account,"","","Correct Monthly Total",x.amount,x.gmv||0,x.videos||0,x.items||0,"","","","",x.notes||"Overrides monthly performance totals"]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");
+  download(new Blob([csv],{type:"text/csv"}),`income-tracker-export-${today()}.csv`);
+}
+function download(blob,name){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+
+let selectedBackupFile = null;
+
+function handleBackupFileSelect(event){
+  selectedBackupFile = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+  const label = document.getElementById("selectedBackupFile");
+  if(label){
+    label.textContent = selectedBackupFile ? selectedBackupFile.name : "No file selected";
+  }
+}
+
+function importSelectedBackup(){
+  if(!selectedBackupFile){
+    alert("Select a JSON backup file first.");
+    return;
+  }
+
+  if(!confirmReplaceData("Import this backup file?")){
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const imported = JSON.parse(reader.result);
+
+      if(!imported || typeof imported !== "object"){
+        throw new Error("Invalid backup");
+      }
+
+      state = imported;
+      normalizeState();
+      save();
+      fillYears();
+      fillMonths();
+      fillFilters();
+      fillPricingForm();
+      resetDaily();
+      resetBrand();
+      resetExpense();
+      if(typeof resetExternal === "function") resetExternal();
+      renderAll();
+
+      const label = document.getElementById("selectedBackupFile");
+      if(label) label.textContent = "Backup imported successfully";
+      logAction("Backup Imported", selectedBackupFile.name); save(); toast("Backup restored successfully");
+    } catch(err){
+      alert("This does not look like a valid Income Tracker JSON backup file.");
+    }
+  };
+  reader.readAsText(selectedBackupFile);
+}
+
+function importJSON(event){
+  handleBackupFileSelect(event);
+  importSelectedBackup();
+}
+
+
+function confirmDestructive(actionText){
+  const first = confirm(`${actionText}\n\nAre you sure?`);
+  if(!first) return false;
+
+  const second = confirm(`Final confirmation:\n\n${actionText}\n\nThis cannot be undone unless you have a JSON backup. Continue?`);
+  return second;
+}
+
+function confirmReplaceData(actionText){
+  const first = confirm(`${actionText}\n\nThis will replace the current tracker data. Continue?`);
+  if(!first) return false;
+
+  const second = confirm(`Final confirmation:\n\nImporting this file will overwrite the current tracker data in this browser. Make sure you exported a backup first.\n\nContinue?`);
+  return second;
+}
+
+
+function clearData(){
+  if(confirmDestructive("Clear all tracker data? Export a backup first if you need it.")){state={daily:[],brands:[],expenses:[],external:[],monthlyAdjustments:[],closeouts:[],auditLog:[],settings:{taxRate:22,incomeGoal:250000,monthlyGoal:20000,accounts:defaultAccounts(),platforms:defaultPlatforms(),expenseCategories:defaultExpenseCategories(),usageRights:defaultUsageRights(),pricing:defaultPricing()}};save();fillDynamicDropdowns();fillPricingForm();renderAll()}
+}
+function toast(msg){
+  $("toast").textContent=msg; $("toast").style.display="block"; setTimeout(()=>$("toast").style.display="none",1800);
+}
+$("yearFilter").addEventListener("change",renderAll);
+$("monthFilter").addEventListener("change",renderAll);
+if($("dateModeFilter")) $("dateModeFilter").addEventListener("change",()=>{ syncDateFilterUI(); renderAll(); });
+if($("startDateFilter")) $("startDateFilter").addEventListener("change",renderAll);
+if($("endDateFilter")) $("endDateFilter").addEventListener("change",renderAll);
+if($("closeoutMonth")) $("closeoutMonth").addEventListener("change",renderCloseout);
+if($("closeoutYear")) $("closeoutYear").addEventListener("change",renderCloseout);
+if($("overviewPlatformFilter")) $("overviewPlatformFilter").addEventListener("change",renderAll);
+
+function trapEnterToNext(formId){
+  const form = document.getElementById(formId);
+  if(!form) return;
+  form.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      const target = e.target;
+      const tag = target.tagName.toLowerCase();
+      if(tag === 'textarea') return;
+      e.preventDefault();
+      const focusables = Array.from(form.querySelectorAll('input, select, textarea, button'))
+        .filter(el => !el.disabled && el.type !== 'hidden' && el.offsetParent !== null);
+      const idx = focusables.indexOf(target);
+      for(let i = idx+1; i < focusables.length; i++){
+        const el = focusables[i];
+        if(el.tagName.toLowerCase() !== 'button'){
+          el.focus();
+          return;
+        }
+      }
+      if(focusables.length){
+        const first = focusables.find(el => el.tagName.toLowerCase() !== 'button');
+        if(first) first.focus();
+      }
+    }
+  });
+}
+
+
+function clearTopFilters(){
+  $("dateModeFilter").value = "year";
+  $("yearFilter").value = curYear();
+  $("monthFilter").value = "All";
+  if($("startDateFilter")) $("startDateFilter").value = today();
+  if($("endDateFilter")) $("endDateFilter").value = today();
+  if($("dateModeFilter")) $("dateModeFilter").value = "year";
+  syncDateFilterUI();
+  $("startDateFilter").value = today();
+  $("endDateFilter").value = today();
+  if($("overviewPlatformFilter")) $("overviewPlatformFilter").value = "All Platforms";
+  syncDateFilterUI();
+  renderAll();
+  toast("Filters cleared");
+}
+
+
+
+
+
+function monthlyReplacementSelfTest(){
+  const testMonthly = [
+    {id:"a",month:"January",year:2026,platform:"TikTok Shop",account:"Test",amount:1000,gmv:5000,videos:2,items:20},
+    {id:"b",month:"January",year:2026,platform:"TikTok Shop",account:"Test",amount:1200,gmv:6000,videos:3,items:25}
+  ];
+  const unique = {};
+  testMonthly.forEach(x=>{
+    unique[`${x.year}|${x.month}|${x.platform}|${x.account}`] = x;
+  });
+  const final = Object.values(unique)[0];
+  if(!(final.amount === 1200 && final.gmv === 6000 && final.videos === 3 && final.items === 25)){
+    console.error("Monthly replacement self-test failed", final);
+  }
+}
+
+function additiveMonthlySelfTest(){
+  const testRows = {
+    daily:[{earnings:100,gmv:500,videos:1,items:2,platform:"TikTok Shop",account:"Test"}],
+    brands:[{amount:300,status:"Paid"},{amount:400,status:"Pending"}],
+    expenses:[{amount:100}],
+    external:[{amount:200}]
+  };
+  const monthlyRows = [{earnings:1000,gmv:5000,videos:2,items:20,platform:"TikTok Shop",account:"Test"}];
+  const t = totals({...testRows, daily:[...testRows.daily, ...monthlyRows]});
+  if(!(t.platformIncome === 1100 && t.totalIncome === 1600 && t.owed === 400)){
+    console.error("Additive monthly calculation self-test failed", t);
+  }
+}
+
+function paidOnlyCalculationSelfTest(){
+  const d = {
+    daily:[{earnings:1000,gmv:5000,videos:2,items:20,platform:"TikTok Shop"}],
+    brands:[{amount:300,status:"Paid"},{amount:400,status:"Pending"}],
+    expenses:[{amount:100}],
+    external:[{amount:200}]
+  };
+  const t = totals(d);
+  if(!(t.totalIncome === 1500 && t.brandPaid === 300 && t.owed === 400 && Math.abs(t.net - 1070) < 0.001)){
+    console.error("Paid-only calculation self-test failed", t);
+  }
+}
+
+setup();
+paidOnlyCalculationSelfTest();
+additiveMonthlySelfTest();
+monthlyReplacementSelfTest();
+switchIncomeEntryType();
+trapEnterToNext('dailyForm');
+trapEnterToNext('brandForm');
+trapEnterToNext('expenseForm');
+</script>
+<script>
+// Prevent Enter from submitting forms, move to next field instead
+document.addEventListener("keydown", function(e){
+  if(e.key === "Enter"){
+    const tag = e.target.tagName.toLowerCase();
+    if(tag === "input" || tag === "select"){
+      e.preventDefault();
+      const form = e.target.closest("form");
+      if(!form) return;
+      const focusable = Array.from(form.querySelectorAll("input, select, textarea, button"))
+        .filter(el => !el.disabled && el.type !== "hidden");
+      const index = focusable.indexOf(e.target);
+      if(index > -1 && index < focusable.length - 1){
+        focusable[index + 1].focus();
+      }
+    }
+  }
+});
+</script></body>
+</html>
