@@ -1557,6 +1557,8 @@ const months = ["January","February","March","April","May","June","July","August
 const storeKey = "incomeTrackerReceiptUploadFixedV1";
 let pendingExpenseReceipt = null;
 let pendingBrandContract = null;
+const API_BASE = "http://127.0.0.1:8000/api";
+let remoteSettings = { platforms:[], accounts:[], expenseCategories:[], usageRights:[], settings:null };
 let state = {daily:[], brands:[], expenses:[], external:[], monthlyAdjustments:[], closeouts:[], auditLog:[], settings:{
   taxRate:22,
   accounts:["DynamiteFinds","DynamiteFindsMore","Trisha"],
@@ -1587,6 +1589,45 @@ const curMonth = () => months[new Date().getMonth()];
 const curYear = () => new Date().getFullYear();
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const esc = v => String(v??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+async function api(path, init){
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "content-type":"application/json", ...(init && init.headers ? init.headers : {}) },
+    ...init
+  });
+  if(!res.ok){
+    const txt = await res.text().catch(()=> "");
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  const ct = res.headers.get("content-type") || "";
+  if(ct.includes("application/json")) return await res.json();
+  return null;
+}
+
+function idByName(rows, name){
+  const n = String(name||"").toLowerCase();
+  const hit = (rows||[]).find(r => String(r.name||"").toLowerCase() === n);
+  return hit ? hit.id : null;
+}
+
+async function syncSettingsFromApi(){
+  const boot = await api("/settings/bootstrap", { method:"GET" });
+  remoteSettings = boot || remoteSettings;
+
+  // Keep the prototype's state shape (arrays of strings) so the rest of the UI keeps working.
+  if(boot && boot.settings){
+    state.settings.taxRate = +boot.settings.taxRate || 22;
+    state.settings.incomeGoal = +boot.settings.incomeGoal || 250000;
+    state.settings.monthlyGoal = +boot.settings.monthlyGoal || 20000;
+  }
+  if(boot && Array.isArray(boot.accounts)) state.settings.accounts = boot.accounts.map(x=>x.name);
+  if(boot && Array.isArray(boot.platforms)) state.settings.platforms = boot.platforms.map(x=>x.name);
+  if(boot && Array.isArray(boot.expenseCategories)) state.settings.expenseCategories = boot.expenseCategories.map(x=>x.name);
+  if(boot && Array.isArray(boot.usageRights)) state.settings.usageRights = boot.usageRights.map(x=>x.name);
+
+  fillDynamicDropdowns();
+  renderAll();
+}
 
 function defaultPricing(){
   return {
@@ -1685,7 +1726,7 @@ function seed(){
   if(!state.external) state.external = [];
 }
 
-function setup(){
+async function setup(){
   load();
   fillMonths();
   fillYears();
@@ -1702,6 +1743,15 @@ function setup(){
   fillPricingForm();
   bindForms();
   renderAll();
+
+  // If Laravel API is running, pull Settings from MySQL so dropdowns are server-backed.
+  // If it fails (API not running yet), the prototype continues using local settings.
+  try{
+    await syncSettingsFromApi();
+    toast("Loaded Settings from backend");
+  }catch(e){
+    console.warn("Settings backend not reachable yet:", e);
+  }
 }
 function fillMonths(){
   ["monthFilter","dailyMonth","brandMonth","expenseMonth","externalMonth","monthlyAdjustmentMonth","closeoutMonth"].forEach(id=>{
@@ -1984,12 +2034,29 @@ function bindForms(){
   if($("dashboardSettingsForm")){
     $("dashboardSettingsForm").addEventListener("submit", e=>{
       e.preventDefault();
-      state.settings.taxRate = +$("settingsTaxRate").value || 0;
-      state.settings.incomeGoal = +$("settingsIncomeGoal").value || 0;
-      state.settings.monthlyGoal = +$("settingsMonthlyGoal").value || 0;
-      save();
-      renderAll();
-      toast("Dashboard settings saved");
+      const taxRate = +$("settingsTaxRate").value || 0;
+      const incomeGoal = +$("settingsIncomeGoal").value || 0;
+      const monthlyGoal = +$("settingsMonthlyGoal").value || 0;
+
+      // Save to backend when available; otherwise fall back to local save.
+      api("/settings", {
+        method:"PUT",
+        body: JSON.stringify({ taxRate, incomeGoal, monthlyGoal })
+      }).then(()=>{
+        state.settings.taxRate = taxRate;
+        state.settings.incomeGoal = incomeGoal;
+        state.settings.monthlyGoal = monthlyGoal;
+        save();
+        renderAll();
+        toast("Dashboard settings saved (backend)");
+      }).catch(()=>{
+        state.settings.taxRate = taxRate;
+        state.settings.incomeGoal = incomeGoal;
+        state.settings.monthlyGoal = monthlyGoal;
+        save();
+        renderAll();
+        toast("Dashboard settings saved (local)");
+      });
     });
   }
 
@@ -3120,15 +3187,21 @@ Taylor`;
 function addAccount(){
   const name = $("newAccountName").value.trim();
   if(!name) return toast("Enter an account name");
-  if(state.settings.accounts.some(a=>a.toLowerCase()===name.toLowerCase())){
-    return toast("That account already exists");
-  }
-  state.settings.accounts.push(name);
-  $("newAccountName").value = "";
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Account added");
+  api("/accounts", { method:"POST", body: JSON.stringify({ name }) })
+    .then(()=>syncSettingsFromApi())
+    .then(()=>{
+      $("newAccountName").value = "";
+      toast("Account added");
+    })
+    .catch(err=>{
+      console.warn(err);
+      // local fallback
+      if(state.settings.accounts.some(a=>a.toLowerCase()===name.toLowerCase())) return toast("That account already exists");
+      state.settings.accounts.push(name);
+      $("newAccountName").value = "";
+      save(); fillDynamicDropdowns(); renderAll();
+      toast("Account added (local)");
+    });
 }
 
 function removeAccount(name){
@@ -3137,25 +3210,41 @@ function removeAccount(name){
     ? `${name} has saved entries. Removing it will only remove it from future dropdowns. Existing entries will stay in reports. Continue?`
     : `Remove ${name}?`;
   if(!confirmDestructive(msg)) return;
-  state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Account removed");
+  const id = idByName(remoteSettings.accounts, name);
+  if(id){
+    api(`/accounts?id=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncSettingsFromApi())
+      .then(()=>toast("Account deleted"))
+      .catch(err=>{
+        console.warn(err);
+        state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
+        save(); fillDynamicDropdowns(); renderAll();
+        toast("Account removed (local)");
+      });
+  }else{
+    state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
+    save(); fillDynamicDropdowns(); renderAll();
+    toast("Account removed (local)");
+  }
 }
 
 function addPlatform(){
   const name = $("newPlatformName").value.trim();
   if(!name) return toast("Enter a platform name");
-  if(state.settings.platforms.some(p=>p.toLowerCase()===name.toLowerCase())){
-    return toast("That platform already exists");
-  }
-  state.settings.platforms.push(name);
-  $("newPlatformName").value = "";
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Platform added");
+  api("/platforms", { method:"POST", body: JSON.stringify({ name }) })
+    .then(()=>syncSettingsFromApi())
+    .then(()=>{
+      $("newPlatformName").value = "";
+      toast("Platform added");
+    })
+    .catch(err=>{
+      console.warn(err);
+      if(state.settings.platforms.some(p=>p.toLowerCase()===name.toLowerCase())) return toast("That platform already exists");
+      state.settings.platforms.push(name);
+      $("newPlatformName").value = "";
+      save(); fillDynamicDropdowns(); renderAll();
+      toast("Platform added (local)");
+    });
 }
 
 function removePlatform(name){
@@ -3164,25 +3253,41 @@ function removePlatform(name){
     ? `${name} has saved entries. Removing it will only remove it from future dropdowns. Existing entries will stay in reports. Continue?`
     : `Remove ${name}?`;
   if(!confirmDestructive(msg)) return;
-  state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Platform removed");
+  const id = idByName(remoteSettings.platforms, name);
+  if(id){
+    api(`/platforms?id=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncSettingsFromApi())
+      .then(()=>toast("Platform deleted"))
+      .catch(err=>{
+        console.warn(err);
+        state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
+        save(); fillDynamicDropdowns(); renderAll();
+        toast("Platform removed (local)");
+      });
+  }else{
+    state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
+    save(); fillDynamicDropdowns(); renderAll();
+    toast("Platform removed (local)");
+  }
 }
 
 function addExpenseCategory(){
   const name = $("newCategoryName").value.trim();
   if(!name) return toast("Enter a category name");
-  if(state.settings.expenseCategories.some(c=>c.toLowerCase()===name.toLowerCase())){
-    return toast("That category already exists");
-  }
-  state.settings.expenseCategories.push(name);
-  $("newCategoryName").value = "";
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Category added");
+  api("/expense-categories", { method:"POST", body: JSON.stringify({ name }) })
+    .then(()=>syncSettingsFromApi())
+    .then(()=>{
+      $("newCategoryName").value = "";
+      toast("Category added");
+    })
+    .catch(err=>{
+      console.warn(err);
+      if(state.settings.expenseCategories.some(c=>c.toLowerCase()===name.toLowerCase())) return toast("That category already exists");
+      state.settings.expenseCategories.push(name);
+      $("newCategoryName").value = "";
+      save(); fillDynamicDropdowns(); renderAll();
+      toast("Category added (local)");
+    });
 }
 
 function removeExpenseCategory(name){
@@ -3191,25 +3296,41 @@ function removeExpenseCategory(name){
     ? `${name} has saved expenses. Removing it only removes it from future dropdowns. Existing expenses stay in reports. Continue?`
     : `Remove ${name}?`;
   if(!confirmDestructive(msg)) return;
-  state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Category removed");
+  const id = idByName(remoteSettings.expenseCategories, name);
+  if(id){
+    api(`/expense-categories?id=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncSettingsFromApi())
+      .then(()=>toast("Category deleted"))
+      .catch(err=>{
+        console.warn(err);
+        state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
+        save(); fillDynamicDropdowns(); renderAll();
+        toast("Category removed (local)");
+      });
+  }else{
+    state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
+    save(); fillDynamicDropdowns(); renderAll();
+    toast("Category removed (local)");
+  }
 }
 
 function addUsageRight(){
   const name = $("newUsageName").value.trim();
   if(!name) return toast("Enter a usage right");
-  if(state.settings.usageRights.some(u=>u.toLowerCase()===name.toLowerCase())){
-    return toast("That usage right already exists");
-  }
-  state.settings.usageRights.push(name);
-  $("newUsageName").value = "";
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Usage right added");
+  api("/usage-rights", { method:"POST", body: JSON.stringify({ name }) })
+    .then(()=>syncSettingsFromApi())
+    .then(()=>{
+      $("newUsageName").value = "";
+      toast("Usage right added");
+    })
+    .catch(err=>{
+      console.warn(err);
+      if(state.settings.usageRights.some(u=>u.toLowerCase()===name.toLowerCase())) return toast("That usage right already exists");
+      state.settings.usageRights.push(name);
+      $("newUsageName").value = "";
+      save(); fillDynamicDropdowns(); renderAll();
+      toast("Usage right added (local)");
+    });
 }
 
 function removeUsageRight(name){
@@ -3218,11 +3339,22 @@ function removeUsageRight(name){
     ? `${name} is used on saved brand deals. Removing it only removes it from future dropdowns. Existing deals stay in reports. Continue?`
     : `Remove ${name}?`;
   if(!confirmDestructive(msg)) return;
-  state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
-  save();
-  fillDynamicDropdowns();
-  renderAll();
-  toast("Usage right removed");
+  const id = idByName(remoteSettings.usageRights, name);
+  if(id){
+    api(`/usage-rights?id=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncSettingsFromApi())
+      .then(()=>toast("Usage right deleted"))
+      .catch(err=>{
+        console.warn(err);
+        state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
+        save(); fillDynamicDropdowns(); renderAll();
+        toast("Usage right removed (local)");
+      });
+  }else{
+    state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
+    save(); fillDynamicDropdowns(); renderAll();
+    toast("Usage right removed (local)");
+  }
 }
 
 function renderSettings(){
@@ -3776,7 +3908,7 @@ function paidOnlyCalculationSelfTest(){
   }
 }
 
-setup();
+setup().catch(err=>console.error(err));
 paidOnlyCalculationSelfTest();
 additiveMonthlySelfTest();
 monthlyReplacementSelfTest();
