@@ -1629,6 +1629,79 @@ async function syncSettingsFromApi(){
   renderAll();
 }
 
+async function syncIncomeFromApi(){
+  const [dailyRows, monthlyRows, externalRows] = await Promise.all([
+    api("/daily-entries", { method:"GET" }),
+    api("/monthly-totals", { method:"GET" }),
+    api("/external-income", { method:"GET" })
+  ]);
+
+  // Map backend shape back into prototype state shape
+  state.daily = (dailyRows || []).map(r => ({
+    id: r.client_id,
+    date: r.date,
+    month: r.month,
+    year: +r.year,
+    platform: r.platform,
+    account: r.account,
+    earnings: +r.income,
+    gmv: +r.gmv,
+    videos: +r.videos,
+    items: +r.items_sold,
+    notes: r.notes || ""
+  }));
+
+  state.monthlyAdjustments = (monthlyRows || []).map(r => ({
+    id: r.client_id,
+    month: r.month,
+    year: +r.year,
+    platform: r.platform,
+    account: r.account,
+    amount: +r.income,
+    gmv: +r.gmv,
+    videos: +r.videos,
+    items: +r.items_sold,
+    notes: r.notes || ""
+  }));
+
+  state.external = (externalRows || []).map(r => ({
+    id: r.client_id,
+    date: r.date,
+    month: r.month,
+    year: +r.year,
+    source: r.source,
+    amount: +r.amount,
+    notes: r.notes || ""
+  }));
+
+  fillYears();
+  renderAll();
+}
+
+async function syncBrandDealsFromApi(){
+  const rows = await api("/brand-deals", { method:"GET" });
+  state.brands = (rows || []).map(r => ({
+    id: r.client_id,
+    date: r.date,
+    month: r.month,
+    year: +r.year,
+    platform: r.platform,
+    account: r.account,
+    brand: r.brand || "",
+    contact: r.contact || "",
+    product: r.product || "",
+    amount: +r.amount,
+    due: r.due_date || "",
+    status: r.status || "Pending",
+    usage: r.usage_rights || "Organic Only",
+    contract: r.contract || null,
+    notes: r.notes || ""
+  }));
+
+  fillYears();
+  renderAll();
+}
+
 function defaultPricing(){
   return {
     singleVideo:800,
@@ -1748,6 +1821,8 @@ async function setup(){
   // If it fails (API not running yet), the prototype continues using local settings.
   try{
     await syncSettingsFromApi();
+    await syncIncomeFromApi();
+    await syncBrandDealsFromApi();
     toast("Loaded Settings from backend");
   }catch(e){
     console.warn("Settings backend not reachable yet:", e);
@@ -2004,8 +2079,35 @@ function bindForms(){
       items:+$("dailyItems").value||0,
       notes:$("dailyNotes").value
     };
-    upsert(state.daily,item);
-    logAction("Daily Entry Saved", `${item.date} | ${item.platform} | ${item.account} | ${money(item.earnings)}`); save(); fillYears(); resetDaily(); renderAll(); toast("Daily entry saved");
+
+    api("/daily-entries", {
+      method:"POST",
+      body: JSON.stringify({
+        clientId: item.id,
+        date: item.date || null,
+        month: item.month,
+        year: item.year,
+        platform: item.platform,
+        account: item.account,
+        income: item.earnings,
+        gmv: item.gmv,
+        videos: item.videos,
+        itemsSold: item.items,
+        notes: item.notes || ""
+      })
+    }).then(()=>{
+      logAction("Daily Entry Saved", `${item.date} | ${item.platform} | ${item.account} | ${money(item.earnings)}`);
+      resetDaily();
+      return syncIncomeFromApi();
+    }).then(()=>{
+      toast("Daily entry saved (backend)");
+    }).catch(err=>{
+      console.warn(err);
+      upsert(state.daily,item);
+      logAction("Daily Entry Saved", `${item.date} | ${item.platform} | ${item.account} | ${money(item.earnings)}`);
+      save(); fillYears(); resetDaily(); renderAll();
+      toast("Daily entry saved (local)");
+    });
   });
 
   $("brandForm").addEventListener("submit", e=>{
@@ -2027,8 +2129,39 @@ function bindForms(){
       contract: pendingBrandContract || (state.brands.find(x=>x.id===$("brandId").value)?.contract || null),
       notes:$("brandNotes").value
     };
-    upsert(state.brands,item);
-    logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`); save(); fillYears(); resetBrand(); renderAll(); toast("Brand deal saved");
+
+    api("/brand-deals", {
+      method:"POST",
+      body: JSON.stringify({
+        clientId: item.id,
+        date: item.date || null,
+        month: item.month,
+        year: item.year,
+        platform: item.platform,
+        account: item.account,
+        brand: item.brand || "",
+        contact: item.contact || "",
+        product: item.product || "",
+        amount: item.amount,
+        status: item.status,
+        dueDate: item.due || null,
+        usageRights: item.usage || "",
+        contract: item.contract || null,
+        notes: item.notes || ""
+      })
+    }).then(()=>{
+      logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
+      resetBrand();
+      return syncBrandDealsFromApi();
+    }).then(()=>{
+      toast("Brand deal saved (backend)");
+    }).catch(err=>{
+      console.warn(err);
+      upsert(state.brands,item);
+      logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
+      save(); fillYears(); resetBrand(); renderAll();
+      toast("Brand deal saved (local)");
+    });
   });
 
   if($("dashboardSettingsForm")){
@@ -2125,7 +2258,30 @@ function bindForms(){
       logAudit("Saved monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
     }
 
-    save(); resetMonthlyAdjustment(); renderAll(); toast("Monthly total saved");
+    api("/monthly-totals", {
+      method:"POST",
+      body: JSON.stringify({
+        clientId: item.id,
+        month: item.month,
+        year: item.year,
+        platform: item.platform,
+        account: item.account,
+        income: item.amount,
+        gmv: item.gmv,
+        videos: item.videos,
+        itemsSold: item.items,
+        notes: item.notes || ""
+      })
+    }).then(()=>{
+      resetMonthlyAdjustment();
+      return syncIncomeFromApi();
+    }).then(()=>{
+      toast("Monthly total saved (backend)");
+    }).catch(err=>{
+      console.warn(err);
+      save(); resetMonthlyAdjustment(); renderAll();
+      toast("Monthly total saved (local)");
+    });
   });
   }
 
@@ -2158,10 +2314,34 @@ function bindForms(){
         month:$("externalMonth").value,
         year:+$("externalYear").value,
         source:$("externalSource").value,
-        amount:+$("externalAmount").value||0
+        amount:+$("externalAmount").value||0,
+        notes:""
       };
-      upsert(state.external,item);
-      logAction("External Income Saved", `${item.source} | ${money(item.amount)}`); save(); fillYears(); resetExternal(); renderAll(); toast("External income saved");
+
+      api("/external-income", {
+        method:"POST",
+        body: JSON.stringify({
+          clientId: item.id,
+          date: item.date || null,
+          month: item.month,
+          year: item.year,
+          source: item.source,
+          amount: item.amount,
+          notes: item.notes || ""
+        })
+      }).then(()=>{
+        logAction("External Income Saved", `${item.source} | ${money(item.amount)}`);
+        resetExternal();
+        return syncIncomeFromApi();
+      }).then(()=>{
+        toast("External income saved (backend)");
+      }).catch(err=>{
+        console.warn(err);
+        upsert(state.external,item);
+        logAction("External Income Saved", `${item.source} | ${money(item.amount)}`);
+        save(); fillYears(); resetExternal(); renderAll();
+        toast("External income saved (local)");
+      });
     });
   }
 
@@ -2905,11 +3085,20 @@ function editMonthlyAdjustment(id){
 
 function deleteMonthlyAdjustment(id){
   if(confirmDestructive("Delete this monthly total override?")){
-    state.monthlyAdjustments = state.monthlyAdjustments.filter(x=>x.id!==id);
-    logAction("Monthly Total Deleted", id);
-    save();
-    renderAll();
-    toast("Monthly total removed");
+    api(`/monthly-totals?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncIncomeFromApi())
+      .then(()=>{
+        logAction("Monthly Total Deleted", id);
+        toast("Monthly total deleted (backend)");
+      })
+      .catch(err=>{
+        console.warn(err);
+        state.monthlyAdjustments = state.monthlyAdjustments.filter(x=>x.id!==id);
+        logAction("Monthly Total Deleted", id);
+        save();
+        renderAll();
+        toast("Monthly total removed (local)");
+      });
   }
 }
 
@@ -3164,8 +3353,32 @@ function editExpense(id){
   const x=state.expenses.find(a=>a.id===id); if(!x)return; showPage("expenses");
   $("expenseId").value=x.id; $("expenseDate").value=x.date; $("expenseMonth").value=x.month; $("expenseYear").value=x.year; $("expenseCategory").value=x.category; $("expensePlatform").value=x.platform; $("expenseAmount").value=x.amount; $("expenseNotes").value=x.notes; pendingExpenseReceipt = null; if($("expenseReceipt")) $("expenseReceipt").value = ""; renderReceiptPreview(x.receipt); $("expenseBtn").textContent="Update Expense";
 }
-function deleteDaily(id){if(confirmDestructive("Delete this daily entry?")){state.daily=state.daily.filter(x=>x.id!==id);save();renderAll()}}
-function deleteBrand(id){if(confirmDestructive("Delete this brand deal?")){state.brands=state.brands.filter(x=>x.id!==id);save();renderAll()}}
+function deleteDaily(id){
+  if(confirmDestructive("Delete this daily entry?")){
+    api(`/daily-entries?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncIncomeFromApi())
+      .then(()=>toast("Daily entry deleted (backend)"))
+      .catch(err=>{
+        console.warn(err);
+        state.daily=state.daily.filter(x=>x.id!==id);
+        save();renderAll();
+        toast("Daily entry removed (local)");
+      });
+  }
+}
+function deleteBrand(id){
+  if(confirmDestructive("Delete this brand deal?")){
+    api(`/brand-deals?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncBrandDealsFromApi())
+      .then(()=>toast("Brand deal deleted (backend)"))
+      .catch(err=>{
+        console.warn(err);
+        state.brands=state.brands.filter(x=>x.id!==id);
+        save();renderAll();
+        toast("Brand deal removed (local)");
+      });
+  }
+}
 function deleteExpense(id){if(confirmDestructive("Delete this expense?")){state.expenses=state.expenses.filter(x=>x.id!==id);save();renderAll()}}
 function copyPay(id){
   const x=state.brands.find(b=>b.id===id);
@@ -3399,8 +3612,15 @@ function editExternal(id){
 }
 function deleteExternal(id){
   if(confirmDestructive("Delete this external income entry?")){
-    state.external=state.external.filter(x=>x.id!==id);
-    save(); renderAll();
+    api(`/external-income?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
+      .then(()=>syncIncomeFromApi())
+      .then(()=>toast("External income deleted (backend)"))
+      .catch(err=>{
+        console.warn(err);
+        state.external=state.external.filter(x=>x.id!==id);
+        save(); renderAll();
+        toast("External income removed (local)");
+      });
   }
 }
 function renderExternalTable(){

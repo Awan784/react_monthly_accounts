@@ -26,3 +26,19 @@ Route::post('/usage-rights', [UsageRightsController::class, 'store']);
 Route::patch('/usage-rights', [UsageRightsController::class, 'update']);
 Route::delete('/usage-rights', [UsageRightsController::class, 'destroy']);
 
+Route::get('/monthly-totals', [\App\Http\Controllers\Api\MonthlyTotalsController::class, 'index']);
+Route::post('/monthly-totals', [\App\Http\Controllers\Api\MonthlyTotalsController::class, 'store']);
+Route::delete('/monthly-totals', [\App\Http\Controllers\Api\MonthlyTotalsController::class, 'destroy']);
+
+Route::get('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::class, 'index']);
+Route::post('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::class, 'store']);
+Route::delete('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::class, 'destroy']);
+
+Route::get('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'index']);
+Route::post('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'store']);
+Route::delete('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'destroy']);
+
+Route::get('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'index']);
+Route::post('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'store']);
+Route::delete('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'destroy']);
+
