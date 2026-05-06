@@ -1619,6 +1619,12 @@ async function syncSettingsFromApi(){
     state.settings.taxRate = +boot.settings.taxRate || 22;
     state.settings.incomeGoal = +boot.settings.incomeGoal || 250000;
     state.settings.monthlyGoal = +boot.settings.monthlyGoal || 20000;
+    if(boot.settings.pricing){
+      state.settings.pricing = {...defaultPricing(), ...boot.settings.pricing};
+    }
+    if(boot.settings.pricingVersion){
+      state.settings.pricingVersion = boot.settings.pricingVersion;
+    }
   }
   if(boot && Array.isArray(boot.accounts)) state.settings.accounts = boot.accounts.map(x=>x.name);
   if(boot && Array.isArray(boot.platforms)) state.settings.platforms = boot.platforms.map(x=>x.name);
@@ -3881,17 +3887,54 @@ function savePricingForm(){
   pricingKeys().forEach(k=>{
     if($(k)) state.settings.pricing[k] = +$(k).value || 0;
   });
-  save();
-  renderPricing();
-  renderDealCalculator();
+  api("/settings", {
+    method:"PUT",
+    body: JSON.stringify({
+      taxRate: state.settings.taxRate ?? 22,
+      incomeGoal: state.settings.incomeGoal ?? 250000,
+      monthlyGoal: state.settings.monthlyGoal ?? 20000,
+      pricingVersion: state.settings.pricingVersion || "mediaKitPricingV2",
+      pricing: state.settings.pricing
+    })
+  }).then(()=>syncSettingsFromApi())
+    .then(()=>{
+      save();
+      renderPricing();
+      renderDealCalculator();
+      toast("Pricing saved (backend)");
+    })
+    .catch(err=>{
+      console.warn(err);
+      save();
+      renderPricing();
+      renderDealCalculator();
+      toast("Pricing saved (local)");
+    });
 }
 
 function resetPricingDefaults(){
   if(!confirmDestructive("Reset pricing to the default reference rates?")) return;
   state.settings.pricing = defaultPricing();
   fillPricingForm();
-  save();
-  toast("Pricing reset");
+  api("/settings", {
+    method:"PUT",
+    body: JSON.stringify({
+      taxRate: state.settings.taxRate ?? 22,
+      incomeGoal: state.settings.incomeGoal ?? 250000,
+      monthlyGoal: state.settings.monthlyGoal ?? 20000,
+      pricingVersion: "mediaKitPricingV2",
+      pricing: state.settings.pricing
+    })
+  }).then(()=>syncSettingsFromApi())
+    .then(()=>{
+      save();
+      toast("Pricing reset (backend)");
+    })
+    .catch(err=>{
+      console.warn(err);
+      save();
+      toast("Pricing reset (local)");
+    });
 }
 
 function renderPricing(){

@@ -25,6 +25,24 @@ class DemoSettingsSeeder extends Seeder
                 'tax_rate' => 22,
                 'income_goal' => 250000,
                 'monthly_goal' => 20000,
+                'pricing_version' => 'mediaKitPricingV2',
+                'pricing' => [
+                    'singleVideo' => 800,
+                    'bundle3' => 2100,
+                    'bundle5' => 3000,
+                    'starterRetainer' => 2000,
+                    'growthRetainer' => 3600,
+                    'scaleRetainer' => 5000,
+                    'usage30' => 750,
+                    'usage60' => 1200,
+                    'usage90' => 1800,
+                    'usage6mo' => 3000,
+                    'usage12mo' => 5000,
+                    'usageUnlimited' => 7500,
+                    'productPhotos' => 200,
+                    'rawFootage' => 500,
+                    'rushFee' => 100,
+                ],
             ]
         );
 
