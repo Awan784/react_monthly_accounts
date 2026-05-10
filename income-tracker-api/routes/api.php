@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AccountsController;
+use App\Http\Controllers\Api\CloseoutsController;
 use App\Http\Controllers\Api\ExpenseCategoriesController;
+use App\Http\Controllers\Api\ExpensesController;
 use App\Http\Controllers\Api\PlatformsController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UsageRightsController;
@@ -34,6 +36,11 @@ Route::get('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::
 Route::post('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::class, 'store']);
 Route::delete('/daily-entries', [\App\Http\Controllers\Api\DailyEntriesController::class, 'destroy']);
 
+Route::get('/expenses', [ExpensesController::class, 'index']);
+Route::post('/expenses', [ExpensesController::class, 'store']);
+Route::delete('/expenses', [ExpensesController::class, 'destroy']);
+Route::get('/expenses/{clientId}/receipt', [ExpensesController::class, 'receipt']);
+
 Route::get('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'index']);
 Route::post('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'store']);
 Route::delete('/external-income', [\App\Http\Controllers\Api\ExternalIncomeController::class, 'destroy']);
@@ -41,4 +48,8 @@ Route::delete('/external-income', [\App\Http\Controllers\Api\ExternalIncomeContr
 Route::get('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'index']);
 Route::post('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'store']);
 Route::delete('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'destroy']);
+
+Route::get('/closeouts', [CloseoutsController::class, 'index']);
+Route::post('/closeouts', [CloseoutsController::class, 'store']);
+Route::delete('/closeouts', [CloseoutsController::class, 'destroy']);
 
