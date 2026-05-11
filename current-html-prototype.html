@@ -797,9 +797,85 @@ th:first-child{
   .pricing-edit-grid{grid-template-columns:1fr;}
 }
 
+.login-screen{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:linear-gradient(160deg, var(--navy) 0%, #1e2a5c 45%, var(--bg) 100%);
+}
+.login-screen.login-screen--hidden{display:none;}
+.login-card{
+  width:100%;
+  max-width:400px;
+  background:#fff;
+  border-radius:14px;
+  padding:28px 26px;
+  border:1px solid var(--line);
+  box-shadow:0 18px 50px rgba(17,24,39,.18);
+}
+.login-card h2{
+  margin:0 0 6px;
+  font-size:22px;
+  color:var(--navy);
+}
+.login-card .tagline{
+  margin:0 0 18px;
+  font-size:13px;
+  color:var(--muted);
+}
+.login-card label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+  margin-bottom:5px;
+}
+.login-card input[type="email"],
+.login-card input[type="password"]{
+  width:100%;
+  margin-bottom:12px;
+}
+.login-card .login-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:16px;
+}
+.login-card .login-actions button.primary{flex:1;padding:11px 14px;}
+.login-error{
+  margin-top:10px;
+  font-size:13px;
+  color:var(--danger);
+  font-weight:700;
+  min-height:20px;
+}
+.app-root--hidden{display:none;}
+
 </style>
 </head>
 <body>
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p class="tagline">Income Tracker — use your API account credentials.</p>
+    <form id="loginForm" onsubmit="submitLogin(event)">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@admin.com">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Password">
+      <div class="login-actions">
+        <button type="submit" class="primary">Sign in</button>
+      </div>
+      <div class="login-error" id="loginError" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
+<div id="appRoot" class="app-root app-root--hidden">
 <header>
   <div class="brand">
     <h1>Income Tracker</h1>
@@ -826,6 +902,7 @@ th:first-child{
     <select id="overviewPlatformFilter"><option>All Platforms</option></select>
     <button class="light" onclick="clearTopFilters()">Clear Filters</button>
     <button class="gold" onclick="showPage('daily')">+ Add Daily Entry</button>
+    <button type="button" class="light" onclick="logout()" title="Sign out">Log out</button>
   </div>
 </header>
 
@@ -1487,6 +1564,7 @@ th:first-child{
     </div>
   </section>
 </main>
+</div>
 
 <div class="receipt-modal" id="receiptModal">
   <div class="receipt-modal-inner">
@@ -1522,6 +1600,95 @@ const API_BASE = (() => {
   }catch(e){}
   return DEFAULT_API_BASE;
 })();
+const AUTH_TOKEN_KEY = "incomeTrackerAuthToken";
+
+function getAuthToken(){
+  try{ return localStorage.getItem(AUTH_TOKEN_KEY); }catch(e){ return null; }
+}
+function setAuthToken(token){
+  try{
+    if(token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+    else localStorage.removeItem(AUTH_TOKEN_KEY);
+  }catch(e){}
+}
+function clearAuthToken(){ setAuthToken(null); }
+
+function setLoginVisible(v){
+  const login = $("loginScreen");
+  const app = $("appRoot");
+  if(!login || !app) return;
+  if(v){
+    login.classList.remove("login-screen--hidden");
+    app.classList.add("app-root--hidden");
+  }else{
+    login.classList.add("login-screen--hidden");
+    app.classList.remove("app-root--hidden");
+  }
+}
+
+async function submitLogin(ev){
+  ev.preventDefault();
+  const errEl = $("loginError");
+  if(errEl) errEl.textContent = "";
+  const email = ($("loginEmail") && $("loginEmail").value || "").trim();
+  const password = $("loginPassword") && $("loginPassword").value || "";
+  try{
+    const res = await fetch(`${API_BASE}/login`, {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        accept:"application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
+    const json = await res.json().catch(()=> null);
+    if(!res.ok){
+      const msg =
+        (json && json.message) ||
+        (json && json.errors && Object.values(json.errors).flat().join(" ")) ||
+        `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    if(!json || !json.token){
+      throw new Error("Invalid login response");
+    }
+    setAuthToken(json.token);
+    setLoginVisible(false);
+    await setup();
+  }catch(e){
+    if(errEl) errEl.textContent = e.message || "Sign in failed.";
+  }
+}
+
+async function logout(){
+  try{
+    await api("/logout", { method:"POST" });
+  }catch(e){
+    console.warn(e);
+  }
+  clearAuthToken();
+  setLoginVisible(true);
+  if($("loginPassword")) $("loginPassword").value = "";
+}
+
+async function bootApp(){
+  const token = getAuthToken();
+  if(!token){
+    setLoginVisible(true);
+    return;
+  }
+  try{
+    await api("/me", { method:"GET" });
+    setLoginVisible(false);
+    await setup();
+  }catch(e){
+    console.warn("Session invalid:", e);
+    clearAuthToken();
+    setLoginVisible(true);
+    toast("Please sign in again.");
+  }
+}
+
 let remoteSettings = { platforms:[], accounts:[], expenseCategories:[], usageRights:[], settings:null };
 let state = {daily:[], brands:[], expenses:[], external:[], monthlyAdjustments:[], closeouts:[], auditLog:[], settings:{
   taxRate:22,
@@ -1555,12 +1722,18 @@ const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const esc = v => String(v??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 
 async function api(path, init){
-  const isForm = init && init.body && (init.body instanceof FormData);
+  init = init || {};
+  const isForm = init.body instanceof FormData;
+  const skipAuth = !!init.skipAuth;
+  const token = !skipAuth ? getAuthToken() : null;
+  const { skipAuth:_skip, ...fetchInit } = init;
   const headers = {
+    accept:"application/json",
     ...(!isForm ? { "content-type":"application/json" } : {}),
-    ...(init && init.headers ? init.headers : {})
+    ...(token ? { authorization:`Bearer ${token}` } : {}),
+    ...(fetchInit.headers || {})
   };
-  const res = await fetch(`${API_BASE}${path}`, { headers, ...init });
+  const res = await fetch(`${API_BASE}${path}`, { ...fetchInit, headers });
   if(!res.ok){
     const ct = res.headers.get("content-type") || "";
     if(ct.includes("application/json")){
@@ -1979,7 +2152,7 @@ async function previewExpenseReceipt(event){
   }
 }
 
-function viewReceipt(id){
+async function viewReceipt(id){
   const expense = state.expenses.find(x=>x.id===id);
   if(!expense || !expense.receipt){
     alert("No receipt is attached to this expense.");
@@ -1987,7 +2160,31 @@ function viewReceipt(id){
   }
 
   if(expense.receipt.downloadUrl){
-    window.open(expense.receipt.downloadUrl, "_blank", "noopener,noreferrer");
+    const token = getAuthToken();
+    if(!token){
+      alert("Sign in to view this receipt.");
+      return;
+    }
+    try{
+      const path = `/expenses/${encodeURIComponent(expense.id)}/receipt`;
+      const res = await fetch(`${API_BASE}${path}`, {
+        method:"GET",
+        headers:{ authorization:`Bearer ${token}` }
+      });
+      if(!res.ok){
+        const txt = await res.text().catch(()=> "");
+        throw new Error(txt.slice(0, 240) || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if(!win){
+        alert("Popup blocked. Allow popups to open the receipt.");
+      }
+      setTimeout(()=> URL.revokeObjectURL(url), 120000);
+    }catch(err){
+      alert("Could not open receipt: " + (err.message || err));
+    }
     return;
   }
 
@@ -4439,7 +4636,7 @@ function paidOnlyCalculationSelfTest(){
   }
 }
 
-setup().catch(err=>console.error(err));
+bootApp().catch(err=>console.error(err));
 paidOnlyCalculationSelfTest();
 additiveMonthlySelfTest();
 monthlyReplacementSelfTest();
