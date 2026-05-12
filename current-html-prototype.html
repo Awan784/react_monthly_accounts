@@ -1054,11 +1054,11 @@ th:first-child{
         </div>
         <div>
           <label>Platform</label>
-          <select id="monthlyAdjustmentPlatform"></select>
+          <select id="monthlyAdjustmentPlatform" required></select>
         </div>
         <div>
           <label>Account</label>
-          <select id="monthlyAdjustmentAccount"></select>
+          <select id="monthlyAdjustmentAccount" required></select>
         </div>
         <div>
           <label>Monthly Income Total</label>
@@ -1462,15 +1462,18 @@ th:first-child{
     </div>
 
     <div class="section">
-      <div class="section-title">Expense Category Settings <span class="note">Add/remove expense categories used in the expense form</span></div>
+      <div class="section-title">Expense Category Settings <span class="note">Add, edit, or remove expense categories used in the expense form</span></div>
       <form class="form-grid" id="categoryForm">
+        <input type="hidden" id="categoryEditId" value="">
+        <input type="hidden" id="categoryEditOldName" value="">
         <div class="span3">
-          <label>New Expense Category</label>
+          <label id="categoryNameLabel">New Expense Category</label>
           <input id="newCategoryName" placeholder="Example: Samples">
         </div>
         <div class="span3">
           <label>&nbsp;</label>
-          <button class="primary" type="submit">Add Category</button>
+          <button class="primary" type="submit" id="categorySubmitBtn">Add Category</button>
+          <button class="light" type="button" onclick="resetCategoryForm()">Clear</button>
         </div>
       </form>
       <div class="table-wrap">
@@ -1479,19 +1482,56 @@ th:first-child{
     </div>
 
     <div class="section">
-      <div class="section-title">Usage Rights Settings <span class="note">Add/remove usage right options used in brand deals</span></div>
+      <div class="section-title">Usage Rights Settings <span class="note">Add, edit, or remove usage right options used in brand deals</span></div>
       <form class="form-grid" id="usageForm">
+        <input type="hidden" id="usageEditId" value="">
+        <input type="hidden" id="usageEditOldName" value="">
         <div class="span3">
-          <label>New Usage Right</label>
+          <label id="usageNameLabel">New Usage Right</label>
           <input id="newUsageName" placeholder="Example: 45-Day Paid Usage">
         </div>
         <div class="span3">
           <label>&nbsp;</label>
-          <button class="primary" type="submit">Add Usage Right</button>
+          <button class="primary" type="submit" id="usageSubmitBtn">Add Usage Right</button>
+          <button class="light" type="button" onclick="resetUsageForm()">Clear</button>
         </div>
       </form>
       <div class="table-wrap">
         <table id="usageSettingsTable"></table>
+      </div>
+    </div>
+
+    <div class="section" id="systemUsersSection" style="display:none">
+      <div class="section-title">System Users <span class="note">Admins can add, edit, and delete users who can log into the system</span></div>
+      <form class="form-grid" id="systemUserForm">
+        <input type="hidden" id="systemUserId">
+        <div class="span2">
+          <label>Name</label>
+          <input id="systemUserName" placeholder="Full name" required>
+        </div>
+        <div class="span2">
+          <label>Email</label>
+          <input id="systemUserEmail" type="email" placeholder="user@company.com" required>
+        </div>
+        <div class="span2">
+          <label>Password <span class="note">(required for new users; optional when editing)</span></label>
+          <input id="systemUserPassword" type="password" autocomplete="new-password" placeholder="Min 8 characters">
+        </div>
+        <div>
+          <label>Admin?</label>
+          <select id="systemUserIsAdmin">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="primary" type="submit" id="systemUserSubmitBtn">Add User</button>
+          <button class="light" type="button" onclick="resetSystemUserForm()">Clear</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table id="systemUsersTable"></table>
       </div>
     </div>
   </section>
@@ -1601,6 +1641,7 @@ const API_BASE = (() => {
   return DEFAULT_API_BASE;
 })();
 const AUTH_TOKEN_KEY = "incomeTrackerAuthToken";
+let currentUser = null;
 
 function getAuthToken(){
   try{ return localStorage.getItem(AUTH_TOKEN_KEY); }catch(e){ return null; }
@@ -1653,6 +1694,7 @@ async function submitLogin(ev){
       throw new Error("Invalid login response");
     }
     setAuthToken(json.token);
+    currentUser = json.user || null;
     setLoginVisible(false);
     await setup();
   }catch(e){
@@ -1678,7 +1720,7 @@ async function bootApp(){
     return;
   }
   try{
-    await api("/me", { method:"GET" });
+    currentUser = await api("/me", { method:"GET" });
     setLoginVisible(false);
     await setup();
   }catch(e){
@@ -1690,6 +1732,7 @@ async function bootApp(){
 }
 
 let remoteSettings = { platforms:[], accounts:[], expenseCategories:[], usageRights:[], settings:null };
+let remoteSystemUsers = [];
 let state = {daily:[], brands:[], expenses:[], external:[], monthlyAdjustments:[], closeouts:[], auditLog:[], settings:{
   taxRate:22,
   accounts:["DynamiteFinds","DynamiteFindsMore","Trisha"],
@@ -1792,6 +1835,77 @@ async function syncSettingsFromApi(){
   renderAll();
 }
 
+async function syncSystemUsersFromApi(){
+  const section = $("systemUsersSection");
+  if(section) section.style.display = (currentUser && currentUser.isAdmin) ? "" : "none";
+  if(!(currentUser && currentUser.isAdmin)) return;
+  try{
+    remoteSystemUsers = await api("/system-users", { method:"GET" });
+  }catch(e){
+    console.warn("System users fetch failed:", e);
+    remoteSystemUsers = [];
+  }
+  renderSystemUsers();
+}
+
+function resetSystemUserForm(){
+  if(!$("systemUserForm")) return;
+  $("systemUserForm").reset();
+  $("systemUserId").value = "";
+  $("systemUserSubmitBtn").textContent = "Add User";
+}
+
+function editSystemUser(id){
+  const u = (remoteSystemUsers || []).find(x=>String(x.id)===String(id));
+  if(!u) return;
+  showPage("settings");
+  $("systemUsersSection").scrollIntoView({ behavior:"smooth", block:"start" });
+  $("systemUserId").value = u.id;
+  $("systemUserName").value = u.name || "";
+  $("systemUserEmail").value = u.email || "";
+  $("systemUserPassword").value = "";
+  $("systemUserIsAdmin").value = u.isAdmin ? "true" : "false";
+  $("systemUserSubmitBtn").textContent = "Update User";
+}
+
+function deleteSystemUser(id){
+  const u = (remoteSystemUsers || []).find(x=>String(x.id)===String(id));
+  if(!u) return;
+  if(!confirmDestructive(`Delete user ${u.email}?`)) return;
+  const itemLabel = u.email || `user id ${id}`;
+  const detailText = `Removed system user · ${u.name || ""} · admin: ${u.isAdmin ? "yes" : "no"}`;
+  api(`/system-users/${encodeURIComponent(id)}`, { method:"DELETE" })
+    .then(()=>syncSystemUsersFromApi())
+    .then(()=>{
+      logAction("System user deleted", detailText, itemLabel);
+      toast("User deleted");
+    })
+    .catch(err=>{
+      console.warn(err);
+      toast(err.message || "Delete failed");
+    });
+}
+
+function renderSystemUsers(){
+  if(!$("systemUsersTable")) return;
+  if(!(currentUser && currentUser.isAdmin)){
+    $("systemUsersTable").innerHTML = "";
+    return;
+  }
+
+  const rows = (remoteSystemUsers || []).map(u=>{
+    const adminBadge = u.isAdmin ? `<span class="pill" style="background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe">Admin</span>` : `<span class="pill">User</span>`;
+    const action =
+      `<div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="light" onclick="editSystemUser('${String(u.id).replaceAll("'","\\'")}')">Edit</button>
+        <button class="danger" onclick="deleteSystemUser('${String(u.id).replaceAll("'","\\'")}')">Delete</button>
+      </div>`;
+    return [esc(u.name||""), esc(u.email||""), adminBadge, action];
+  });
+
+  $("systemUsersTable").innerHTML = table(["Name","Email","Role","Action"], rows, true);
+}
+
 async function syncIncomeFromApi(){
   const [dailyRows, monthlyRows, externalRows] = await Promise.all([
     api("/daily-entries", { method:"GET" }),
@@ -1855,9 +1969,14 @@ async function syncBrandDealsFromApi(){
     product: r.product || "",
     amount: +r.amount,
     due: r.due_date || "",
-    status: r.status || "Pending",
+    status: normalizeBrandStatus(r.status || "Pending"),
     usage: r.usage_rights || "Organic Only",
-    contract: r.contract || null,
+    contract: r.contract ? {
+      name: r.contract.name || "contract",
+      type: r.contract.mime || r.contract.type || "",
+      downloadUrl: r.contract.downloadUrl || r.contract.download_url || null,
+      data: r.contract.data || null
+    } : null,
     notes: r.notes || ""
   }));
 
@@ -2021,11 +2140,15 @@ async function setup(){
   // If Laravel API is running, pull Settings from MySQL so dropdowns are server-backed.
   // If it fails (API not running yet), the prototype continues using local settings.
   try{
+    if(!currentUser){
+      try{ currentUser = await api("/me", { method:"GET" }); }catch(e){}
+    }
     await syncSettingsFromApi();
     await syncIncomeFromApi();
     await syncBrandDealsFromApi();
     await syncExpensesFromApi();
     await syncCloseoutsFromApi();
+    await syncSystemUsersFromApi();
     toast("Loaded Settings from backend");
   }catch(e){
     console.warn("Settings backend not reachable yet:", e);
@@ -2176,10 +2299,17 @@ async function viewReceipt(id){
         throw new Error(txt.slice(0, 240) || `HTTP ${res.status}`);
       }
       const blob = await res.blob();
+      const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), expense.receipt.name || "receipt");
       const url = URL.createObjectURL(blob);
       const win = window.open(url, "_blank", "noopener,noreferrer");
       if(!win){
-        alert("Popup blocked. Allow popups to open the receipt.");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fname;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
       setTimeout(()=> URL.revokeObjectURL(url), 120000);
     }catch(err){
@@ -2261,56 +2391,106 @@ async function previewBrandContract(event){
     return;
   }
 
-  const maxBytes = 2.5 * 1024 * 1024;
+  const maxBytes = 25 * 1024 * 1024;
   if(file.size > maxBytes){
-    alert("This file is too large for local browser storage. Please upload a file under 2.5 MB.");
+    alert("This file is too large. Please upload a contract under 25 MB.");
     event.target.value = "";
     pendingBrandContract = null;
     if(preview) preview.textContent = "No contract attached";
     return;
   }
 
-  try{
-    const data = await readFileAsDataURL(file);
-    pendingBrandContract = {
-      name:file.name,
-      type:file.type || "application/octet-stream",
-      data:data,
-      savedAt:new Date().toISOString()
-    };
-    renderBrandContractPreview(pendingBrandContract);
-  }catch(err){
-    alert("Could not read this file. Try a different file.");
-    pendingBrandContract = null;
-  }
+  pendingBrandContract = {
+    file,
+    name: file.name,
+    type: file.type || "application/octet-stream"
+  };
+  renderBrandContractPreview(pendingBrandContract);
 }
 
 function renderBrandContractPreview(contract){
   const preview = $("brandContractPreview");
   if(!preview) return;
+  if(contract && contract.file){
+    preview.innerHTML = `<span>${esc(contract.name || "Contract file")}</span><span class="note">Ready to upload</span>`;
+    return;
+  }
+  if(contract && contract.downloadUrl){
+    const name = contract.name || "contract";
+    preview.innerHTML = `<span>${esc(name)}</span><span class="note">Saved — use View to open or download</span>`;
+    return;
+  }
   if(contract && contract.data){
     preview.innerHTML = `<span>${esc(contract.name || "Saved contract")}</span>`;
-  }else{
-    preview.textContent = "No contract attached";
+    return;
+  }
+  preview.textContent = "No contract attached";
+}
+
+function parseFilenameFromContentDisposition(header, fallback){
+  if(!header) return fallback;
+  const m = /filename\*=UTF-8''([^;\n]+)|filename="([^"]+)"|filename=([^;\n]+)/i.exec(header);
+  const raw = (m && (m[1] || m[2] || m[3])) ? (m[1] || m[2] || m[3]).trim() : null;
+  if(!raw) return fallback;
+  try{
+    return decodeURIComponent(raw.replace(/^"+|"+$/g, ""));
+  }catch(e){
+    return raw.replace(/^"+|"+$/g, "") || fallback;
   }
 }
 
-function viewBrandContract(id){
+async function viewBrandContract(id){
   const deal = state.brands.find(x=>x.id===id);
-  if(!deal || !deal.contract || !deal.contract.data){
+  if(!deal || !deal.contract){
     alert("No contract is attached to this brand deal.");
     return;
   }
-  const win = window.open();
-  if(!win){
-    alert("Popup blocked. Allow popups for this file to view the contract.");
+
+  const token = getAuthToken();
+  if(token){
+    try{
+      const res = await fetch(`${API_BASE}/brand-deals/${encodeURIComponent(id)}/contract`, {
+        method:"GET",
+        headers:{ authorization:`Bearer ${token}` }
+      });
+      if(res.ok){
+        const blob = await res.blob();
+        const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), deal.contract.name || "contract");
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank", "noopener,noreferrer");
+        if(!win){
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fname;
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+        setTimeout(()=> URL.revokeObjectURL(url), 120000);
+        return;
+      }
+    }catch(err){
+      console.warn(err);
+    }
+  }
+
+  if(deal.contract.data){
+    const win = window.open();
+    if(!win){
+      alert("Popup blocked. Allow popups for this file to view the contract.");
+      return;
+    }
+    const t = deal.contract.type || "";
+    if(t.startsWith("image/") || t.includes("pdf")){
+      win.document.write(`<iframe src="${deal.contract.data}" style="width:100%;height:100vh;border:0"></iframe>`);
+    }else{
+      win.document.write(`<a href="${deal.contract.data}" download="${(deal.contract.name || "contract").replace(/"/g, "")}">Download ${esc(deal.contract.name || "contract")}</a>`);
+    }
     return;
   }
-  if((deal.contract.type || "").startsWith("image/") || (deal.contract.type || "").includes("pdf")){
-    win.document.write(`<iframe src="${deal.contract.data}" style="width:100%;height:100vh;border:0"></iframe>`);
-  }else{
-    win.document.write(`<a href="${deal.contract.data}" download="${deal.contract.name || "contract"}">Download ${deal.contract.name || "contract"}</a>`);
-  }
+
+  alert("No contract is attached to this brand deal.");
 }
 
 
@@ -2391,38 +2571,87 @@ function bindForms(){
       notes:$("brandNotes").value
     };
 
-    api("/brand-deals", {
-      method:"POST",
-      body: JSON.stringify({
-        clientId: item.id,
-        date: item.date || null,
-        month: item.month,
-        year: item.year,
-        platform: item.platform,
-        account: item.account,
-        brand: item.brand || "",
-        contact: item.contact || "",
-        product: item.product || "",
-        amount: item.amount,
-        status: item.status,
-        dueDate: item.due || null,
-        usageRights: item.usage || "",
-        contract: item.contract || null,
-        notes: item.notes || ""
-      })
-    }).then(()=>{
+    const saveBrand = ()=>{
       logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
       resetBrand();
       return syncBrandDealsFromApi();
-    }).then(()=>{
-      toast("Brand deal saved (backend)");
-    }).catch(err=>{
-      console.warn(err);
-      upsert(state.brands,item);
-      logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
-      save(); fillYears(); resetBrand(); renderAll();
-      toast("Brand deal saved (local)");
-    });
+    };
+
+    if(pendingBrandContract && pendingBrandContract.file){
+      const fd = new FormData();
+      fd.set("clientId", item.id);
+      if(item.date) fd.set("date", item.date);
+      fd.set("month", item.month);
+      fd.set("year", String(item.year));
+      fd.set("platform", item.platform);
+      fd.set("account", item.account);
+      fd.set("brand", item.brand || "");
+      fd.set("contact", item.contact || "");
+      fd.set("product", item.product || "");
+      fd.set("amount", String(item.amount ?? 0));
+      fd.set("status", item.status);
+      if(item.due) fd.set("dueDate", item.due);
+      fd.set("usageRights", item.usage || "");
+      if(item.notes) fd.set("notes", item.notes);
+      fd.set("contract", pendingBrandContract.file, pendingBrandContract.name || "contract");
+
+      api("/brand-deals", { method:"POST", body: fd })
+        .then(()=>saveBrand())
+        .then(()=>toast("Brand deal saved (backend)"))
+        .catch(err=>{
+          console.warn(err);
+          if(err && typeof err.status === "number"){
+            toast(`Brand deal not saved: ${err.message || "Backend error"}`);
+            return;
+          }
+          upsert(state.brands,item);
+          logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
+          save(); fillYears(); resetBrand(); renderAll();
+          toast("Brand deal saved (local — backend unreachable)");
+        });
+      return;
+    }
+
+    const body = {
+      clientId: item.id,
+      date: item.date || null,
+      month: item.month,
+      year: item.year,
+      platform: item.platform,
+      account: item.account,
+      brand: item.brand || "",
+      contact: item.contact || "",
+      product: item.product || "",
+      amount: item.amount,
+      status: item.status,
+      dueDate: item.due || null,
+      usageRights: item.usage || "",
+      notes: item.notes || ""
+    };
+    if(pendingBrandContract && pendingBrandContract.data){
+      body.contract = {
+        name: pendingBrandContract.name,
+        type: pendingBrandContract.type,
+        data: pendingBrandContract.data
+      };
+    }
+
+    api("/brand-deals", {
+      method:"POST",
+      body: JSON.stringify(body)
+    }).then(()=>saveBrand())
+      .then(()=>toast("Brand deal saved (backend)"))
+      .catch(err=>{
+        console.warn(err);
+        if(err && typeof err.status === "number"){
+          toast(`Brand deal not saved: ${err.message || "Backend error"}`);
+          return;
+        }
+        upsert(state.brands,item);
+        logAction("Brand Deal Saved", `${item.brand} | ${money(item.amount)}`);
+        save(); fillYears(); resetBrand(); renderAll();
+        toast("Brand deal saved (local — backend unreachable)");
+      });
   });
 
   if($("dashboardSettingsForm")){
@@ -2478,6 +2707,42 @@ function bindForms(){
     });
   }
 
+  if($("systemUserForm")){
+    $("systemUserForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      if(!(currentUser && currentUser.isAdmin)){
+        return toast("Admin access required");
+      }
+
+      const id = ($("systemUserId").value || "").trim();
+      const name = ($("systemUserName").value || "").trim();
+      const email = ($("systemUserEmail").value || "").trim();
+      const password = $("systemUserPassword").value || "";
+      const isAdmin = ($("systemUserIsAdmin").value || "false") === "true";
+
+      const payload = { name, email, isAdmin };
+      if(password) payload.password = password;
+
+      if(!id && !password){
+        return toast("Password is required for new users");
+      }
+
+      const path = id ? `/system-users/${encodeURIComponent(id)}` : "/system-users";
+      const method = id ? "PATCH" : "POST";
+
+      api(path, { method, body: JSON.stringify(payload) })
+        .then(()=>syncSystemUsersFromApi())
+        .then(()=>{
+          resetSystemUserForm();
+          toast(id ? "User updated" : "User created");
+        })
+        .catch(err=>{
+          console.warn(err);
+          toast(err.message || "Save failed");
+        });
+    });
+  }
+
   $("pricingForm").addEventListener("submit", e=>{
     e.preventDefault();
     savePricingForm();
@@ -2513,10 +2778,10 @@ function bindForms(){
     if(existingIndex >= 0){
       item.id = state.monthlyAdjustments[existingIndex].id;
       state.monthlyAdjustments[existingIndex] = item;
-      logAudit("Replaced monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
+      logAction("Replaced monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
     }else{
       upsert(state.monthlyAdjustments,item);
-      logAudit("Saved monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
+      logAction("Saved monthly total", `${item.month} ${item.year} / ${item.platform} / ${item.account}: ${money(item.amount)}`);
     }
 
     api("/monthly-totals", {
@@ -2540,6 +2805,12 @@ function bindForms(){
       toast("Monthly total saved (backend)");
     }).catch(err=>{
       console.warn(err);
+      const st = err && typeof err.status === "number" ? err.status : 0;
+      if(st >= 400 && st < 500){
+        toast(err.message || "Monthly total could not be saved. Check platform, account, and values.");
+        syncIncomeFromApi().catch(()=>{});
+        return;
+      }
       save(); resetMonthlyAdjustment(); renderAll();
       toast("Monthly total saved (local)");
     });
@@ -2752,6 +3023,33 @@ function monthInRange(yr, monthName, range){
   const r = monthDateRange(+yr, monthName);
   return r.end >= range.start && r.start <= range.end;
 }
+
+/** Canonical status for comparisons (API / local may vary in casing). */
+function normalizeBrandStatus(s){
+  const t = (s == null ? "" : String(s)).trim().toLowerCase();
+  if(t === "paid") return "Paid";
+  if(t === "pending") return "Pending";
+  if(t === "overdue") return "Overdue";
+  if(t === "follow-up" || t === "follow up") return "Follow-Up";
+  const u = (s && String(s).trim()) || "Pending";
+  return ["Paid","Pending","Overdue","Follow-Up"].includes(u) ? u : "Pending";
+}
+function brandDealIsPaid(deal){
+  return normalizeBrandStatus(deal && deal.status) === "Paid";
+}
+
+/**
+ * Whether a brand deal belongs in a calendar range for income / reporting.
+ * Prefer month+year (accounting period from the form); use deal date only if month/year do not overlap.
+ * This keeps Monthly Income, totals, and the Brand Deals tab aligned when date and month differ.
+ */
+function brandDealInRange(deal, range){
+  if(!deal || !range) return false;
+  const hasMonthYear = deal.month != null && String(deal.month).trim() !== "" && deal.year != null && Number.isFinite(+deal.year);
+  if(hasMonthYear && monthInRange(+deal.year, deal.month, range)) return true;
+  if(deal.date) return dateInRange(deal.date, range);
+  return false;
+}
 function syncDateFilterUI(){
   const mode = $("dateModeFilter") ? $("dateModeFilter").value : "year";
   const showMonth = mode === "month";
@@ -2783,69 +3081,76 @@ function overviewPlatform(){
 
 
 
-function logAction(action, detail){
+function auditActorName(){
+  try{
+    if(currentUser){
+      const n = (currentUser.name && String(currentUser.name).trim()) || "";
+      const e = (currentUser.email && String(currentUser.email).trim()) || "";
+      if(n && e) return `${n} (${e})`;
+      return n || e || "Signed-in user";
+    }
+  }catch(e){}
+  return "Not signed in";
+}
+
+function logAction(action, detail, itemAffected){
   state.auditLog = Array.isArray(state.auditLog) ? state.auditLog : [];
+  const d = detail != null ? String(detail) : "";
+  const item = itemAffected != null && String(itemAffected).trim() !== "" ? String(itemAffected).trim() : d;
   state.auditLog.unshift({
     id: uid(),
     date: new Date().toISOString(),
-    action,
-    detail
+    action: String(action || ""),
+    detail: d,
+    item,
+    user: auditActorName()
   });
   state.auditLog = state.auditLog.slice(0,100);
+  try{ save(); }catch(e){}
 }
 
-
-
-
-
-function periodForFilters({yr=year(), monthName=null, platformName=null, accountName=null} = {}){
-  let daily = state.daily.filter(x=>+x.year===+yr);
-  let brands = state.brands.filter(x=>+x.year===+yr);
-  let expenses = state.expenses.filter(x=>+x.year===+yr);
-  let external = (state.external||[]).filter(x=>+x.year===+yr);
-
-  if(monthName){
-    daily = daily.filter(x=>x.month===monthName);
-    brands = brands.filter(x=>x.month===monthName);
-    expenses = expenses.filter(x=>x.month===monthName);
-    external = external.filter(x=>x.month===monthName);
-  }
-
-  if(platformName){
-    daily = daily.filter(x=>x.platform===platformName);
-    brands = brands.filter(x=>x.platform===platformName);
-    expenses = expenses.filter(x=>x.platform===platformName || x.platform==="General");
-    external = [];
-  }
-
-  if(accountName){
-    daily = daily.filter(x=>x.account===accountName);
-    brands = brands.filter(x=>(x.account||"")===accountName);
-  }
-
-  return applyAdjustmentsToPeriod({
-    daily,
-    brands,
-    expenses,
-    external,
-    _year:yr,
-    _month:monthName,
-    _platform:platformName,
-    _account:accountName
+function normGridStr(v){
+  return (v??"").toString().trim().toLowerCase();
+}
+function platformMatchesRecord(recordPlatform, filterPlatform){
+  if(!filterPlatform || filterPlatform==="All Platforms") return true;
+  return normGridStr(recordPlatform) === normGridStr(filterPlatform);
+}
+function accountMatchesGridRow(recordAccount, gridRowName){
+  const row = (gridRowName??"").toString().trim();
+  if(!row) return true;
+  if(row === "(No account)") return !normGridStr(recordAccount);
+  const rec = (recordAccount??"").toString().trim();
+  if(!rec) return false;
+  return normGridStr(rec) === normGridStr(row);
+}
+function gridYear(){
+  const y = +($("yearFilter") && $("yearFilter").value);
+  return Number.isFinite(y) && y > 1900 && y < 2200 ? y : curYear();
+}
+function tiktokMonthlyGridAccountNames(){
+  const base = [...(state.settings.accounts||[])];
+  const yr = gridYear();
+  const hasUnassigned = (state.brands||[]).some(b=>{
+    if(+b.year !== +yr) return false;
+    if(!platformMatchesRecord(b.platform, "TikTok Shop")) return false;
+    return !normGridStr(b.account);
   });
+  if(hasUnassigned && !base.includes("(No account)")) base.push("(No account)");
+  return base;
 }
 
 function totals(d=getPeriod()){
   const earnings = d.daily.reduce((s,x)=>s+(+x.earnings||0),0);
-  const tiktokEarnings = d.daily.filter(x=>x.platform==="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
-  const otherPlatformEarnings = d.daily.filter(x=>x.platform!=="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
+  const tiktokEarnings = d.daily.filter(x=>platformMatchesRecord(x.platform, "TikTok Shop")).reduce((s,x)=>s+(+x.earnings||0),0);
+  const otherPlatformEarnings = d.daily.filter(x=>!platformMatchesRecord(x.platform, "TikTok Shop")).reduce((s,x)=>s+(+x.earnings||0),0);
   const gmv = d.daily.reduce((s,x)=>s+(+x.gmv||0),0);
   const videos = d.daily.reduce((s,x)=>s+(+x.videos||0),0);
   const items = d.daily.reduce((s,x)=>s+(+x.items||0),0);
 
   const brandGross = d.brands.reduce((s,x)=>s+(+x.amount||0),0);
-  const brandPaid = d.brands.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
-  const owed = d.brands.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const brandPaid = d.brands.filter(brandDealIsPaid).reduce((s,x)=>s+(+x.amount||0),0);
+  const owed = d.brands.filter(x=> !brandDealIsPaid(x)).reduce((s,x)=>s+(+x.amount||0),0);
   const expenses = d.expenses.reduce((s,x)=>s+(+x.amount||0),0);
   const externalIncome = (d.external||[]).reduce((s,x)=>s+(+x.amount||0),0);
 
@@ -2894,6 +3199,7 @@ function renderAll(){
   renderDataCheck();
   renderExternalTable();
   renderSettings();
+  renderSystemUsers();
 }
 
 /* ===== SINGLE SOURCE OF TRUTH CALCULATION ENGINE ===== */
@@ -2914,8 +3220,8 @@ function adjustmentInRange(adj, range){
 
 function baseDailyRowsForRange(range, platformName=null, accountName=null){
   let rows = state.daily.filter(x=>dateInRange(x.date, range));
-  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=>x.platform === platformName);
-  if(accountName) rows = rows.filter(x=>x.account === accountName);
+  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=> platformMatchesRecord(x.platform, platformName));
+  if(accountName) rows = rows.filter(x=> accountMatchesGridRow(x.account, accountName));
   return rows;
 }
 
@@ -2924,8 +3230,8 @@ function monthlyAdjustmentRowsForRange(range, platformName=null, accountName=nul
 
   (state.monthlyAdjustments || [])
     .filter(adj=>adjustmentInRange(adj, range))
-    .filter(adj=>!platformName || platformName === "All Platforms" || adj.platform === platformName)
-    .filter(adj=>!accountName || adj.account === accountName)
+    .filter(adj=>!platformName || platformName === "All Platforms" || platformMatchesRecord(adj.platform, platformName))
+    .filter(adj=>!accountName || accountMatchesGridRow(adj.account, accountName))
     .forEach(adj=>{
       rows.push({
         id:"monthly-total-" + adj.id,
@@ -2953,13 +3259,10 @@ function adjustedDailyForRange(range, platformName=null, accountName=null){
 }
 
 function brandsForRange(range, platformName=null, accountName=null){
-  let rows = state.brands.filter(x=>{
-    if(x.date) return dateInRange(x.date, range);
-    return monthInRange(x.year, x.month, range);
-  });
+  let rows = state.brands.filter(x=> brandDealInRange(x, range));
 
-  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=>x.platform === platformName);
-  if(accountName) rows = rows.filter(x=>(x.account || "") === accountName);
+  if(platformName && platformName !== "All Platforms") rows = rows.filter(x=> platformMatchesRecord(x.platform, platformName));
+  if(accountName) rows = rows.filter(x=> accountMatchesGridRow(x.account, accountName));
 
   return rows;
 }
@@ -3001,50 +3304,6 @@ function periodForFilters({yr=year(), monthName=null, platformName=null, account
     range = {start:`${yr}-01-01`, end:`${yr}-12-31`};
   }
   return periodFromRange(range, platformName, accountName);
-}
-
-function totals(d=getPeriod()){
-  const earnings = d.daily.reduce((s,x)=>s+(+x.earnings||0),0);
-  const tiktokEarnings = d.daily.filter(x=>x.platform==="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
-  const otherPlatformEarnings = d.daily.filter(x=>x.platform!=="TikTok Shop").reduce((s,x)=>s+(+x.earnings||0),0);
-  const gmv = d.daily.reduce((s,x)=>s+(+x.gmv||0),0);
-  const videos = d.daily.reduce((s,x)=>s+(+x.videos||0),0);
-  const items = d.daily.reduce((s,x)=>s+(+x.items||0),0);
-
-  const brandGross = d.brands.reduce((s,x)=>s+(+x.amount||0),0);
-  const brandPaid = d.brands.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
-  const owed = d.brands.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
-  const expenses = d.expenses.reduce((s,x)=>s+(+x.amount||0),0);
-  const externalIncome = (d.external||[]).reduce((s,x)=>s+(+x.amount||0),0);
-
-  const brandTotal = brandPaid;
-  const totalIncome = earnings + brandPaid + externalIncome;
-  const taxRate = +(state.settings.taxRate ?? 22);
-  const taxes = totalIncome * (taxRate / 100);
-  const net = totalIncome - taxes - expenses;
-  const collected = totalIncome;
-
-  return {
-    earnings,
-    tiktokEarnings,
-    otherPlatformEarnings,
-    gmv,
-    videos,
-    items,
-    brandTotal,
-    brandGross,
-    brandPaid,
-    owed,
-    expenses,
-    externalIncome,
-    totalIncome,
-    gross:totalIncome,
-    allSocial:earnings + brandPaid,
-    collected,
-    net,
-    taxes,
-    taxRate
-  };
 }
 
 function monthlyTotalsForYear(){
@@ -3207,6 +3466,7 @@ function renderPlatformMix(){
   });
 
   d.brands.forEach(x=>{
+    if(!brandDealIsPaid(x)) return;
     totalsByPlatform[x.platform] = (totalsByPlatform[x.platform] || 0) + (+x.amount || 0);
   });
 
@@ -3231,7 +3491,7 @@ function renderPlatformMix(){
 }
 
 function renderOwedHighlights(){
-  const open = getOverviewPeriod().brands.filter(x=>x.status!=="Paid").sort((a,b)=>(b.amount||0)-(a.amount||0));
+  const open = getOverviewPeriod().brands.filter(x=> !brandDealIsPaid(x)).sort((a,b)=>(b.amount||0)-(a.amount||0));
   $("owedHighlights").innerHTML = open.length ? open.slice(0,5).map(x=>`
     <div class="alert-item">
       <strong>${esc(x.brand)} | ${money(x.amount)}</strong>
@@ -3402,16 +3662,23 @@ function editMonthlyAdjustment(id){
 
 function deleteMonthlyAdjustment(id){
   if(confirmDestructive("Delete this monthly total override?")){
+    const row = (state.monthlyAdjustments || []).find(x=>x.id===id);
+    const itemLabel = row
+      ? `${row.month} ${row.year} · ${row.platform} · ${row.account}`
+      : `clientId ${id}`;
+    const detailText = row
+      ? `Income ${money(row.amount)} · GMV ${money(row.gmv||0)} · videos ${row.videos||0}`
+      : "Monthly total removed";
     api(`/monthly-totals?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncIncomeFromApi())
       .then(()=>{
-        logAction("Monthly Total Deleted", id);
+        logAction("Monthly total deleted", detailText, itemLabel);
         toast("Monthly total deleted (backend)");
       })
       .catch(err=>{
         console.warn(err);
         state.monthlyAdjustments = state.monthlyAdjustments.filter(x=>x.id!==id);
-        logAction("Monthly Total Deleted", id);
+        logAction("Monthly total deleted (local)", detailText, itemLabel);
         save();
         renderAll();
         toast("Monthly total removed (local)");
@@ -3462,12 +3729,20 @@ function renderCloseout(){
 
 function renderAuditLog(){
   if(!$("auditLogTable")) return;
-  const rows = (state.auditLog||[]).slice(0,30).map(x=>[
-    new Date(x.date).toLocaleString(),
-    x.action,
-    x.detail
-  ]);
-  $("auditLogTable").innerHTML = table(["Date","Action","Details"], rows);
+  const rows = (state.auditLog||[]).slice(0,50).map(x=>{
+    const it = (x.item != null && String(x.item).trim()) ? String(x.item).trim() : "";
+    const det = (x.detail != null && String(x.detail).trim()) ? String(x.detail).trim() : "";
+    let itemCell = it || det;
+    if(it && det && it !== det) itemCell = `${it} — ${det}`;
+    const user = x.user || "—";
+    return [
+      new Date(x.date).toLocaleString(),
+      x.action || "",
+      itemCell,
+      user
+    ];
+  });
+  $("auditLogTable").innerHTML = table(["Timestamp","Action","Item affected","User"], rows);
 }
 
 function renderDailyTable(){
@@ -3487,20 +3762,21 @@ function renderDailyTable(){
   renderIncomeRecords();
 }
 function renderGrids(){
-  $("tiktokGrid").innerHTML = monthlyGrid(state.settings.accounts, true);
+  $("tiktokGrid").innerHTML = monthlyGrid(tiktokMonthlyGridAccountNames(), true);
   $("socialGrid").innerHTML = socialGrid();
   if($("excelTotalsGrid")) $("excelTotalsGrid").innerHTML = excelTotalsGrid();
 }
 function monthlyGrid(names,isTikTok){
+  const yr = gridYear();
   let html = `<thead><tr><th>Account</th><th>Metric</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
   names.forEach((name,idx)=>{
     const cls = idx===0?"green":idx===1?"blueRow":"yellow";
     ["earnings","gmv","brands","videos","items"].forEach(metric=>{
       const vals = months.map(m=>{
         if(metric==="brands"){
-          return brandsForRange(monthDateRange(year(), m), "TikTok Shop", name).reduce((s,x)=>s+(+x.amount||0),0);
+          return brandsForRange(monthDateRange(yr, m), "TikTok Shop", name).filter(brandDealIsPaid).reduce((s,x)=>s+(+x.amount||0),0);
         }
-        const period = periodForFilters({yr:year(), monthName:m, platformName:"TikTok Shop", accountName:name});
+        const period = periodForFilters({yr, monthName:m, platformName:"TikTok Shop", accountName:name});
         return sum(period.daily,metric);
       });
       const total = vals.reduce((a,b)=>a+b,0);
@@ -3511,14 +3787,15 @@ function monthlyGrid(names,isTikTok){
   return html;
 }
 function socialGrid(){
-  const plats = state.settings.platforms.filter(p=>p!=="TikTok Shop");
+  const yr = gridYear();
+  const plats = state.settings.platforms.filter(p=>!platformMatchesRecord(p, "TikTok Shop"));
   let html = `<thead><tr><th>Platform</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr></thead><tbody>`;
   plats.forEach((p,i)=>{
-    const vals = months.map(m=>sum(periodForFilters({yr:year(), monthName:m, platformName:p}).daily,"earnings"));
+    const vals = months.map(m=>sum(periodForFilters({yr, monthName:m, platformName:p}).daily,"earnings"));
     const total = vals.reduce((a,b)=>a+b,0);
     html += `<tr class="${i%2?"green":"peach"}"><td>${p}</td>${vals.map(v=>`<td>${money(v)}</td>`).join("")}<td>${money(total)}</td></tr>`;
   });
-  html += `<tr class="total-row"><td>Total Monthly</td>${months.map(m=>money(sum(periodForFilters({yr:year(), monthName:m}).daily.filter(x=>x.platform!=="TikTok Shop"),"earnings"))).map(v=>`<td>${v}</td>`).join("")}<td>${money(sum(periodForFilters({yr:year()}).daily.filter(x=>x.platform!=="TikTok Shop"),"earnings"))}</td></tr>`;
+  html += `<tr class="total-row"><td>Total Monthly</td>${months.map(m=>money(sum(periodForFilters({yr, monthName:m}).daily.filter(x=>!platformMatchesRecord(x.platform, "TikTok Shop")),"earnings"))).map(v=>`<td>${v}</td>`).join("")}<td>${money(sum(periodForFilters({yr, monthName:null}).daily.filter(x=>!platformMatchesRecord(x.platform, "TikTok Shop")),"earnings"))}</td></tr>`;
   html += `</tbody>`;
   return html;
 }
@@ -3568,15 +3845,16 @@ function renderPlatformTable(){
 function renderBrandAnalytics(){
   if(!document.getElementById("brandDealAnalyticsCards")) return;
 
-  const rows = state.brands.filter(inPeriod);
+  const rows = state.brands.filter(b=> brandDealInRange(b, getActiveDateRange()));
   const total = rows.reduce((s,x)=>s+(+x.amount||0),0);
-  const paid = rows.filter(x=>x.status==="Paid").reduce((s,x)=>s+(+x.amount||0),0);
-  const unpaid = rows.filter(x=>x.status!=="Paid").reduce((s,x)=>s+(+x.amount||0),0);
+  const paid = rows.filter(brandDealIsPaid).reduce((s,x)=>s+(+x.amount||0),0);
+  const unpaid = rows.filter(x=> !brandDealIsPaid(x)).reduce((s,x)=>s+(+x.amount||0),0);
   const avg = rows.length ? total / rows.length : 0;
-  const paidPct = rows.length ? (rows.filter(x=>x.status==="Paid").length / rows.length) * 100 : 0;
+  const paidPct = rows.length ? (rows.filter(brandDealIsPaid).length / rows.length) * 100 : 0;
 
   const byBrand = {};
   rows.forEach(x=>{
+    if(!brandDealIsPaid(x)) return;
     const name = x.brand || "Unknown";
     byBrand[name] = (byBrand[name] || 0) + (+x.amount || 0);
   });
@@ -3592,7 +3870,7 @@ function renderBrandAnalytics(){
   ].map(([label,value])=>`<div class="report-card"><b>${label}</b><strong>${value}</strong></div>`).join("");
 
   const statusRows = ["Paid","Pending","Overdue","Follow-Up"].map(statusName=>{
-    const filtered = rows.filter(x=>x.status===statusName);
+    const filtered = rows.filter(x=> normalizeBrandStatus(x.status) === statusName);
     return [statusName, filtered.length, money(filtered.reduce((s,x)=>s+(+x.amount||0),0))];
   });
 
@@ -3603,15 +3881,15 @@ function renderBrandAnalytics(){
 
   document.getElementById("brandDealAnalyticsTable").innerHTML =
     table(["Status","Deal Count","Amount"], statusRows) +
-    `<tbody><tr class="subhead"><td colspan="3">Top Brands</td></tr>` +
-    (brandRows.length ? brandRows.map(r=>`<tr><td>${r[0]}</td><td colspan="2">${r[1]}</td></tr>`).join("") : `<tr><td colspan="3">No brand data yet</td></tr>`) +
+    `<tbody><tr class="subhead"><td colspan="3">Top Brands (paid)</td></tr>` +
+    (brandRows.length ? brandRows.map(r=>`<tr><td>${r[0]}</td><td colspan="2">${r[1]}</td></tr>`).join("") : `<tr><td colspan="3">No paid brand revenue in this period</td></tr>`) +
     `</tbody>`;
 }
 
 function renderBrandTable(){
-  const rows = state.brands.filter(inPeriod).sort((a,b)=>b.date.localeCompare(a.date));
+  const rows = state.brands.filter(b=> brandDealInRange(b, getActiveDateRange())).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   $("brandTable").innerHTML = table(["Date","Month","Platform","Account","Brand","Contact","Product","Amount","Due","Status","Usage Rights","Contract","Notes","Actions"],
-    rows.map(x=>[x.date,x.month,x.platform,x.account||"",x.brand,x.contact||"",x.product,money(x.amount),x.due,status(x.status),x.usage||"Organic Only",x.contract&&x.contract.data?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,actions("Brand",x.id)]), true);
+    rows.map(x=>[x.date,x.month,x.platform,x.account||"",x.brand,x.contact||"",x.product,money(x.amount),x.due,status(normalizeBrandStatus(x.status)),x.usage||"Organic Only",x.contract && (x.contract.data || x.contract.downloadUrl) ?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,actions("Brand",x.id)]), true);
 }
 function renderExpenseTable(){
   const rows = state.expenses.filter(inPeriod).sort((a,b)=>b.date.localeCompare(a.date));
@@ -3628,15 +3906,15 @@ function renderExpenseTable(){
     ]), true);
 }
 function renderPayments(){
-  const rows = state.brands.filter(x=>inPeriod(x) && x.status!=="Paid");
+  const rows = state.brands.filter(x=> brandDealInRange(x, getActiveDateRange()) && !brandDealIsPaid(x));
   $("paymentsTable").innerHTML = table(["Brand","Account","Contact","Product","Platform","Amount Owed","Due","Status","Usage","Contract","Notes","Copy"],
-    rows.map(x=>[x.brand,x.account||"",x.contact||"",x.product,x.platform,money(x.amount),x.due,status(x.status),x.usage||"Organic Only",x.contract&&x.contract.data?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,`<button class="light" onclick="copyPay('${x.id}')">Copy</button>`]), true);
+    rows.map(x=>[x.brand,x.account||"",x.contact||"",x.product,x.platform,money(x.amount),x.due,status(normalizeBrandStatus(x.status)),x.usage||"Organic Only",x.contract && (x.contract.data || x.contract.downloadUrl) ?`<button class="light" onclick="viewBrandContract('${x.id}')">View</button>`:"",x.notes,`<button class="light" onclick="copyPay('${x.id}')">Copy</button>`]), true);
 }
 function table(headers, rows, raw=false){
   return `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.length?rows.map(r=>`<tr>${r.map(c=>`<td>${raw?c:esc(c)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${headers.length}" class="center note">No data yet</td></tr>`}</tbody>`;
 }
 function sum(arr,key){return arr.reduce((s,x)=>s+(+x[key]||0),0)}
-function label(m){return {earnings:"Commission",gmv:"GMV",brands:"Brand Deals",videos:"Videos",items:"Items Sold"}[m]}
+function label(m){return {earnings:"Commission",gmv:"GMV",brands:"Paid Brand Deals",videos:"Videos",items:"Items Sold"}[m]}
 function format(metric,v){return ["videos","items"].includes(metric)?number(v):money(v)}
 function status(s){return `<span class="status ${s.replaceAll(" ","-")}">${esc(s)}</span>`}
 function actions(type,id){return `<span class="actions"><button class="light" onclick="edit${type}('${id}')">Edit</button><button class="danger" onclick="delete${type}('${id}')">Delete</button></span>`}
@@ -3676,7 +3954,7 @@ function showPage(id){
 
   // Monthly Grid is computed from Monthly Totals + Daily Entries + Settings.
   if(id === "monthly"){
-    Promise.all([syncSettingsFromApi(), syncIncomeFromApi()])
+    Promise.all([syncSettingsFromApi(), syncIncomeFromApi(), syncBrandDealsFromApi()])
       .catch(err=>console.warn("Could not sync monthly grid data from backend:", err));
   }
 
@@ -3717,7 +3995,7 @@ function editDaily(id){
 }
 function editBrand(id){
   const x=state.brands.find(a=>a.id===id); if(!x)return; showPage("brands");
-  $("brandId").value=x.id; $("brandDate").value=x.date; $("brandMonth").value=x.month; $("brandYear").value=x.year; $("brandPlatform").value=x.platform; $("brandAccount").value=x.account||state.settings.accounts[0]||""; $("brandName").value=x.brand; $("brandContact").value=x.contact||""; $("brandProduct").value=x.product; $("brandAmount").value=x.amount; $("brandDue").value=x.due; $("brandStatus").value=x.status; $("brandUsage").value=x.usage||"Organic Only"; pendingBrandContract = null; if($("brandContract")) $("brandContract").value = ""; renderBrandContractPreview(x.contract); $("brandNotes").value=x.notes; $("brandBtn").textContent="Update Brand Deal";
+  $("brandId").value=x.id; $("brandDate").value=x.date; $("brandMonth").value=x.month; $("brandYear").value=x.year; $("brandPlatform").value=x.platform; $("brandAccount").value=x.account||state.settings.accounts[0]||""; $("brandName").value=x.brand; $("brandContact").value=x.contact||""; $("brandProduct").value=x.product; $("brandAmount").value=x.amount; $("brandDue").value=x.due; $("brandStatus").value=normalizeBrandStatus(x.status); $("brandUsage").value=x.usage||"Organic Only"; pendingBrandContract = null; if($("brandContract")) $("brandContract").value = ""; renderBrandContractPreview(x.contract); $("brandNotes").value=x.notes; $("brandBtn").textContent="Update Brand Deal";
 }
 function editExpense(id){
   const x=state.expenses.find(a=>a.id===id); if(!x)return; showPage("expenses");
@@ -3725,12 +4003,21 @@ function editExpense(id){
 }
 function deleteDaily(id){
   if(confirmDestructive("Delete this daily entry?")){
+    const row = state.daily.find(x=>x.id===id);
+    const itemLabel = row ? `${row.date} · ${row.platform} · ${row.account}` : `clientId ${id}`;
+    const detailText = row
+      ? `${row.month} ${row.year} · earnings ${money(row.earnings)} · GMV ${money(row.gmv)} · videos ${row.videos}`
+      : "Daily entry removed";
     api(`/daily-entries?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncIncomeFromApi())
-      .then(()=>toast("Daily entry deleted (backend)"))
+      .then(()=>{
+        logAction("Daily entry deleted", detailText, itemLabel);
+        toast("Daily entry deleted (backend)");
+      })
       .catch(err=>{
         console.warn(err);
         state.daily=state.daily.filter(x=>x.id!==id);
+        logAction("Daily entry deleted (local)", detailText, itemLabel);
         save();renderAll();
         toast("Daily entry removed (local)");
       });
@@ -3738,12 +4025,21 @@ function deleteDaily(id){
 }
 function deleteBrand(id){
   if(confirmDestructive("Delete this brand deal?")){
+    const row = state.brands.find(x=>x.id===id);
+    const itemLabel = row ? `${row.brand || "Brand"} · ${row.platform}` : `clientId ${id}`;
+    const detailText = row
+      ? `${row.month} ${row.year} · ${money(row.amount)} · ${normalizeBrandStatus(row.status)}`
+      : "Brand deal removed";
     api(`/brand-deals?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncBrandDealsFromApi())
-      .then(()=>toast("Brand deal deleted (backend)"))
+      .then(()=>{
+        logAction("Brand deal deleted", detailText, itemLabel);
+        toast("Brand deal deleted (backend)");
+      })
       .catch(err=>{
         console.warn(err);
         state.brands=state.brands.filter(x=>x.id!==id);
+        logAction("Brand deal deleted (local)", detailText, itemLabel);
         save();renderAll();
         toast("Brand deal removed (local)");
       });
@@ -3751,12 +4047,19 @@ function deleteBrand(id){
 }
 function deleteExpense(id){
   if(confirmDestructive("Delete this expense?")){
+    const row = state.expenses.find(x=>x.id===id);
+    const itemLabel = row ? `${row.date} · ${row.category} · ${row.platform}` : `clientId ${id}`;
+    const detailText = row ? `${row.month} ${row.year} · ${money(row.amount)}` : "Expense removed";
     api(`/expenses?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncExpensesFromApi())
-      .then(()=>toast("Expense deleted (backend)"))
+      .then(()=>{
+        logAction("Expense deleted", detailText, itemLabel);
+        toast("Expense deleted (backend)");
+      })
       .catch(err=>{
         console.warn(err);
         state.expenses=state.expenses.filter(x=>x.id!==id);
+        logAction("Expense deleted (local)", detailText, itemLabel);
         save();renderAll();
         toast("Expense removed (local)");
       });
@@ -3809,15 +4112,20 @@ function removeAccount(name){
   if(id){
     api(`/accounts?id=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncSettingsFromApi())
-      .then(()=>toast("Account deleted"))
+      .then(()=>{
+        logAction("Account removed", `Removed from account list`, name);
+        toast("Account deleted");
+      })
       .catch(err=>{
         console.warn(err);
         state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
+        logAction("Account removed (local)", `Removed from settings only`, name);
         save(); fillDynamicDropdowns(); renderAll();
         toast("Account removed (local)");
       });
   }else{
     state.settings.accounts = state.settings.accounts.filter(a=>a!==name);
+    logAction("Account removed (local)", `No backend id; settings only`, name);
     save(); fillDynamicDropdowns(); renderAll();
     toast("Account removed (local)");
   }
@@ -3852,34 +4160,102 @@ function removePlatform(name){
   if(id){
     api(`/platforms?id=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncSettingsFromApi())
-      .then(()=>toast("Platform deleted"))
+      .then(()=>{
+        logAction("Platform removed", `No longer in platform list`, name);
+        toast("Platform deleted");
+      })
       .catch(err=>{
         console.warn(err);
         state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
+        logAction("Platform removed (local)", `Removed from settings only`, name);
         save(); fillDynamicDropdowns(); renderAll();
         toast("Platform removed (local)");
       });
   }else{
     state.settings.platforms = state.settings.platforms.filter(p=>p!==name);
+    logAction("Platform removed (local)", `No backend id; settings only`, name);
     save(); fillDynamicDropdowns(); renderAll();
     toast("Platform removed (local)");
   }
 }
 
+function resetCategoryForm(){
+  if($("categoryEditId")) $("categoryEditId").value = "";
+  if($("categoryEditOldName")) $("categoryEditOldName").value = "";
+  if($("newCategoryName")) $("newCategoryName").value = "";
+  if($("categorySubmitBtn")) $("categorySubmitBtn").textContent = "Add Category";
+  if($("categoryNameLabel")) $("categoryNameLabel").textContent = "New Expense Category";
+}
+
+function editExpenseCategory(id){
+  const rows = remoteSettings.expenseCategories || [];
+  const row = rows.find(r => String(r.id) === String(id));
+  if(!row) return;
+  showPage("settings");
+  $("categoryEditId").value = row.id;
+  $("categoryEditOldName").value = row.name || "";
+  $("newCategoryName").value = row.name || "";
+  $("categorySubmitBtn").textContent = "Update Category";
+  if($("categoryNameLabel")) $("categoryNameLabel").textContent = "Expense Category";
+}
+
 function addExpenseCategory(){
+  const editId = ($("categoryEditId") && $("categoryEditId").value || "").trim();
+  const oldName = ($("categoryEditOldName") && $("categoryEditOldName").value || "").trim();
   const name = $("newCategoryName").value.trim();
   if(!name) return toast("Enter a category name");
+
+  if(editId){
+    api("/expense-categories", { method:"PATCH", body: JSON.stringify({ id: Number(editId), name }) })
+      .then(()=>{
+        if(oldName && oldName !== name){
+          for(const x of state.expenses || []){
+            if(x.category === oldName) x.category = name;
+          }
+          save();
+        }
+        return syncSettingsFromApi();
+      })
+      .then(()=>{
+        resetCategoryForm();
+        toast("Category updated");
+      })
+      .catch(err=>{
+        console.warn(err);
+        toast(err.message || "Update failed");
+      });
+    return;
+  }
+
+  if(oldName){
+    if(oldName === name){
+      resetCategoryForm();
+      return;
+    }
+    if(state.settings.expenseCategories.some(c=>c.toLowerCase()===name.toLowerCase() && c !== oldName)){
+      return toast("That category name already exists");
+    }
+    state.settings.expenseCategories = state.settings.expenseCategories.map(c=> (c === oldName ? name : c));
+    for(const x of state.expenses || []){
+      if(x.category === oldName) x.category = name;
+    }
+    save(); fillDynamicDropdowns(); renderAll();
+    resetCategoryForm();
+    toast("Category updated (local)");
+    return;
+  }
+
   api("/expense-categories", { method:"POST", body: JSON.stringify({ name }) })
     .then(()=>syncSettingsFromApi())
     .then(()=>{
-      $("newCategoryName").value = "";
+      resetCategoryForm();
       toast("Category added");
     })
     .catch(err=>{
       console.warn(err);
       if(state.settings.expenseCategories.some(c=>c.toLowerCase()===name.toLowerCase())) return toast("That category already exists");
       state.settings.expenseCategories.push(name);
-      $("newCategoryName").value = "";
+      resetCategoryForm();
       save(); fillDynamicDropdowns(); renderAll();
       toast("Category added (local)");
     });
@@ -3895,34 +4271,102 @@ function removeExpenseCategory(name){
   if(id){
     api(`/expense-categories?id=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncSettingsFromApi())
-      .then(()=>toast("Category deleted"))
+      .then(()=>{
+        logAction("Expense category removed", `Removed from category list`, name);
+        toast("Category deleted");
+      })
       .catch(err=>{
         console.warn(err);
         state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
+        logAction("Expense category removed (local)", `Removed from settings only`, name);
         save(); fillDynamicDropdowns(); renderAll();
         toast("Category removed (local)");
       });
   }else{
     state.settings.expenseCategories = state.settings.expenseCategories.filter(c=>c!==name);
+    logAction("Expense category removed (local)", `No backend id; settings only`, name);
     save(); fillDynamicDropdowns(); renderAll();
     toast("Category removed (local)");
   }
 }
 
+function resetUsageForm(){
+  if($("usageEditId")) $("usageEditId").value = "";
+  if($("usageEditOldName")) $("usageEditOldName").value = "";
+  if($("newUsageName")) $("newUsageName").value = "";
+  if($("usageSubmitBtn")) $("usageSubmitBtn").textContent = "Add Usage Right";
+  if($("usageNameLabel")) $("usageNameLabel").textContent = "New Usage Right";
+}
+
+function editUsageRight(id){
+  const rows = remoteSettings.usageRights || [];
+  const row = rows.find(r => String(r.id) === String(id));
+  if(!row) return;
+  showPage("settings");
+  $("usageEditId").value = row.id;
+  $("usageEditOldName").value = row.name || "";
+  $("newUsageName").value = row.name || "";
+  $("usageSubmitBtn").textContent = "Update Usage Right";
+  if($("usageNameLabel")) $("usageNameLabel").textContent = "Usage Right";
+}
+
 function addUsageRight(){
+  const editId = ($("usageEditId") && $("usageEditId").value || "").trim();
+  const oldName = ($("usageEditOldName") && $("usageEditOldName").value || "").trim();
   const name = $("newUsageName").value.trim();
   if(!name) return toast("Enter a usage right");
+
+  if(editId){
+    api("/usage-rights", { method:"PATCH", body: JSON.stringify({ id: Number(editId), name }) })
+      .then(()=>{
+        if(oldName && oldName !== name){
+          for(const x of state.brands || []){
+            if(x.usage === oldName) x.usage = name;
+          }
+          save();
+        }
+        return syncSettingsFromApi();
+      })
+      .then(()=>{
+        resetUsageForm();
+        toast("Usage right updated");
+      })
+      .catch(err=>{
+        console.warn(err);
+        toast(err.message || "Update failed");
+      });
+    return;
+  }
+
+  if(oldName){
+    if(oldName === name){
+      resetUsageForm();
+      return;
+    }
+    if(state.settings.usageRights.some(u=>u.toLowerCase()===name.toLowerCase() && u !== oldName)){
+      return toast("That usage right already exists");
+    }
+    state.settings.usageRights = state.settings.usageRights.map(u=> (u === oldName ? name : u));
+    for(const x of state.brands || []){
+      if(x.usage === oldName) x.usage = name;
+    }
+    save(); fillDynamicDropdowns(); renderAll();
+    resetUsageForm();
+    toast("Usage right updated (local)");
+    return;
+  }
+
   api("/usage-rights", { method:"POST", body: JSON.stringify({ name }) })
     .then(()=>syncSettingsFromApi())
     .then(()=>{
-      $("newUsageName").value = "";
+      resetUsageForm();
       toast("Usage right added");
     })
     .catch(err=>{
       console.warn(err);
       if(state.settings.usageRights.some(u=>u.toLowerCase()===name.toLowerCase())) return toast("That usage right already exists");
       state.settings.usageRights.push(name);
-      $("newUsageName").value = "";
+      resetUsageForm();
       save(); fillDynamicDropdowns(); renderAll();
       toast("Usage right added (local)");
     });
@@ -3938,15 +4382,20 @@ function removeUsageRight(name){
   if(id){
     api(`/usage-rights?id=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncSettingsFromApi())
-      .then(()=>toast("Usage right deleted"))
+      .then(()=>{
+        logAction("Usage right removed", `Removed from usage-rights list`, name);
+        toast("Usage right deleted");
+      })
       .catch(err=>{
         console.warn(err);
         state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
+        logAction("Usage right removed (local)", `Removed from settings only`, name);
         save(); fillDynamicDropdowns(); renderAll();
         toast("Usage right removed (local)");
       });
   }else{
     state.settings.usageRights = state.settings.usageRights.filter(u=>u!==name);
+    logAction("Usage right removed (local)", `No backend id; settings only`, name);
     save(); fillDynamicDropdowns(); renderAll();
     toast("Usage right removed (local)");
   }
@@ -3969,6 +4418,52 @@ function renderSettings(){
       const count = state.daily.filter(x=>x.platform===p).length + state.brands.filter(x=>x.platform===p).length + state.expenses.filter(x=>x.platform===p).length;
       return [p, count, `<button class="danger" onclick="removePlatform('${String(p).replaceAll("'","\\'")}')">Remove</button>`];
     }), true);
+
+  if($("categoriesSettingsTable")){
+    $("categoriesSettingsTable").innerHTML = table(["Category","Used Expenses","Action"],
+      state.settings.expenseCategories.map(c=>{
+        const count = state.expenses.filter(x=>x.category===c).length;
+        const id = idByName(remoteSettings.expenseCategories, c);
+        const safe = String(c).replaceAll("'","\\'");
+        const editBtn = id
+          ? `<button class="light" onclick="editExpenseCategory(${Number(id)})">Edit</button>`
+          : `<button class="light" onclick="editExpenseCategoryLocal('${safe}')">Edit</button>`;
+        const removeBtn = `<button class="danger" onclick="removeExpenseCategory('${safe}')">Remove</button>`;
+        return [c, count, `<div style="display:flex;gap:8px;flex-wrap:wrap">${editBtn}${removeBtn}</div>`];
+      }), true);
+  }
+
+  if($("usageSettingsTable")){
+    $("usageSettingsTable").innerHTML = table(["Usage Right","Used Deals","Action"],
+      state.settings.usageRights.map(u=>{
+        const count = state.brands.filter(x=>x.usage===u).length;
+        const id = idByName(remoteSettings.usageRights, u);
+        const safe = String(u).replaceAll("'","\\'");
+        const editBtn = id
+          ? `<button class="light" onclick="editUsageRight(${Number(id)})">Edit</button>`
+          : `<button class="light" onclick="editUsageRightLocal('${safe}')">Edit</button>`;
+        const removeBtn = `<button class="danger" onclick="removeUsageRight('${safe}')">Remove</button>`;
+        return [u, count, `<div style="display:flex;gap:8px;flex-wrap:wrap">${editBtn}${removeBtn}</div>`];
+      }), true);
+  }
+}
+
+function editExpenseCategoryLocal(oldName){
+  showPage("settings");
+  $("categoryEditId").value = "";
+  $("categoryEditOldName").value = oldName;
+  $("newCategoryName").value = oldName;
+  $("categorySubmitBtn").textContent = "Update Category";
+  if($("categoryNameLabel")) $("categoryNameLabel").textContent = "Expense Category";
+}
+
+function editUsageRightLocal(oldName){
+  showPage("settings");
+  $("usageEditId").value = "";
+  $("usageEditOldName").value = oldName;
+  $("newUsageName").value = oldName;
+  $("usageSubmitBtn").textContent = "Update Usage Right";
+  if($("usageNameLabel")) $("usageNameLabel").textContent = "Usage Right";
 }
 
 
@@ -3994,13 +4489,20 @@ function editExternal(id){
 }
 function deleteExternal(id){
   if(confirmDestructive("Delete this external income entry?")){
+    const row = (state.external || []).find(x=>x.id===id);
+    const itemLabel = row ? `${row.source || "External"} · ${row.date}` : `clientId ${id}`;
+    const detailText = row ? `${row.month} ${row.year} · ${money(row.amount)}` : "External income removed";
     api(`/external-income?clientId=${encodeURIComponent(id)}`, { method:"DELETE" })
       .then(()=>syncIncomeFromApi())
-      .then(()=>toast("External income deleted (backend)"))
+      .then(()=>{
+        logAction("External income deleted", detailText, itemLabel);
+        toast("External income deleted (backend)");
+      })
       .catch(err=>{
         console.warn(err);
         state.external=state.external.filter(x=>x.id!==id);
-        save(); renderAll();
+        logAction("External income deleted (local)", detailText, itemLabel);
+        save();renderAll();
         toast("External income removed (local)");
       });
   }
@@ -4027,14 +4529,14 @@ function renderDataCheck(){
     const monthlyAdjIncome = (state.monthlyAdjustments||[])
       .filter(x=>+x.year===yr && x.month===m)
       .reduce((s,x)=>s+(+x.amount||0),0);
-    const brandIncome = brandsForRange(range).reduce((s,x)=>s+(+x.amount||0),0);
+    const brandIncomePaid = brandsForRange(range).filter(brandDealIsPaid).reduce((s,x)=>s+(+x.amount||0),0);
     const externalIncome = externalForRange(range).reduce((s,x)=>s+(+x.amount||0),0);
 
     return [
       m,
       money(rawDailyIncome),
       monthlyAdjIncome ? money(monthlyAdjIncome) : "-",
-      money(brandIncome),
+      money(brandIncomePaid),
       money(externalIncome),
       money(t.totalIncome),
       money(t.gmv),
@@ -4044,7 +4546,7 @@ function renderDataCheck(){
   });
 
   $("dataCheckReport").innerHTML = table(
-    ["Month","Raw Daily Income","Monthly Override","Brand Deals","External Income","Tracker Total Income","Tracker GMV","Tracker Videos","Tracker Items"],
+    ["Month","Raw Daily Income","Monthly Override","Paid Brand Deals","External Income","Tracker Total Income","Tracker GMV","Tracker Videos","Tracker Items"],
     rows
   );
 }
@@ -4087,7 +4589,7 @@ function renderReports(){
   });
 
   $("monthlyReport").innerHTML = table(
-    ["Month","Income","Expenses","Net","Videos","GMV","Brand Deals","Payments Owed"],
+    ["Month","Income","Expenses","Net","Videos","GMV","Paid Brand Deals","Payments Owed"],
     monthRows.map(r=>[r.month,money(r.income),money(r.expenses),money(r.net),r.videos,money(r.gmv),money(r.brandDeals),money(r.paymentsOwed)])
   );
 
@@ -4150,7 +4652,7 @@ function renderChangeReport(rows){
       ["Net", money(current.net), previous?money(previous.net):"N/A", previous?pctChange(current.net,previous.net):"N/A"],
       ["GMV", money(current.gmv), previous?money(previous.gmv):"N/A", previous?pctChange(current.gmv,previous.gmv):"N/A"],
       ["Videos", current.videos, previous?previous.videos:"N/A", previous?pctChange(current.videos,previous.videos):"N/A"],
-      ["Brand Deals", money(current.brandDeals), previous?money(previous.brandDeals):"N/A", previous?pctChange(current.brandDeals,previous.brandDeals):"N/A"]
+      ["Paid Brand Deals", money(current.brandDeals), previous?money(previous.brandDeals):"N/A", previous?pctChange(current.brandDeals,previous.brandDeals):"N/A"]
     ]
   );
 }
@@ -4162,7 +4664,7 @@ function daysBetween(a,b){
 }
 function paymentAgingTable(yr){
   const todayDate = new Date().toISOString().slice(0,10);
-  const unpaid = state.brands.filter(x=>x.year==yr && x.status!=="Paid");
+  const unpaid = state.brands.filter(x=>x.year==yr && !brandDealIsPaid(x));
   const buckets = {
     "0-30 Days":0,
     "31-60 Days":0,
@@ -4220,7 +4722,7 @@ async function exportMonthlyReportCSV(){
     const t = totals(periodForFilters({yr:yr, monthName:m}));
     return [m,t.totalIncome,t.expenses,t.net,t.videos,t.gmv,t.brandPaid,t.owed];
   });
-  exportReportCSV(`income-tracker-monthly-report-${yr}.csv`,["Month","Income","Expenses","Net","Videos","GMV","Brand Deals","Payments Owed"],rows);
+  exportReportCSV(`income-tracker-monthly-report-${yr}.csv`,["Month","Income","Expenses","Net","Videos","GMV","Paid Brand Deals","Payments Owed"],rows);
 }
 async function exportAnnualReportCSV(){
   try{
@@ -4636,8 +5138,25 @@ function paidOnlyCalculationSelfTest(){
   }
 }
 
+/** Deal counted in May income when month=May even if contract date is earlier in the year. */
+function brandDealRangeSelfTest(){
+  const may2026 = monthDateRange(2026, "May");
+  const deal = { month:"May", year:2026, date:"2026-01-10", amount:500, status:"Paid" };
+  if(!brandDealInRange(deal, may2026)){
+    console.error("brandDealRangeSelfTest: expected May accounting month to match May range", deal, may2026);
+  }
+  const march2026 = monthDateRange(2026, "March");
+  if(brandDealInRange(deal, march2026)){
+    console.error("brandDealRangeSelfTest: May deal should not match March range");
+  }
+  if(!brandDealIsPaid({ status: "paid", amount: 1 })){
+    console.error("brandDealRangeSelfTest: brandDealIsPaid should accept lowercase paid");
+  }
+}
+
 bootApp().catch(err=>console.error(err));
 paidOnlyCalculationSelfTest();
+brandDealRangeSelfTest();
 additiveMonthlySelfTest();
 monthlyReplacementSelfTest();
 switchIncomeEntryType();
