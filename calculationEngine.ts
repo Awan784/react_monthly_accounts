@@ -67,6 +67,12 @@ function n(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function brandDealIsPaidStatus(status: unknown): boolean {
+  return String(status ?? "")
+    .trim()
+    .toLowerCase() === "paid";
+}
+
 function matchesFilter(row: any, filters?: Filters): boolean {
   if (!filters) return true;
   if (filters.year && Number(row.year) !== Number(filters.year)) return false;
@@ -102,11 +108,11 @@ export function calculateDashboardTotals(input: CalculationInput) {
   const itemsSold = monthlyItems + dailyItems;
 
   const paidBrandDeals = brandDeals
-    .filter(row => row.status === "Paid")
+    .filter(row => brandDealIsPaidStatus(row.status))
     .reduce((sum, row) => sum + n(row.amount), 0);
 
   const paymentsOwed = brandDeals
-    .filter(row => row.status !== "Paid")
+    .filter(row => !brandDealIsPaidStatus(row.status))
     .reduce((sum, row) => sum + n(row.amount), 0);
 
   const external = externalIncome.reduce((sum, row) => sum + n(row.amount), 0);

@@ -60,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'index']);
     Route::post('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'store']);
+    Route::get('/brand-deals/{clientId}/contract', [\App\Http\Controllers\Api\BrandDealsController::class, 'contract']);
     Route::delete('/brand-deals', [\App\Http\Controllers\Api\BrandDealsController::class, 'destroy']);
 
     Route::get('/closeouts', [CloseoutsController::class, 'index']);

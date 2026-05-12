@@ -108,8 +108,10 @@ class ExpensesController extends Controller
 
         $downloadName = $row->receipt_original_name ?: basename($path);
         $fullPath = Storage::disk($disk)->path($path);
+        $mime = $row->receipt_mime ?: $this->guessReceiptMimeFromName($downloadName);
+
         return response()->download($fullPath, $downloadName, array_filter([
-            'Content-Type' => $row->receipt_mime ?: null,
+            'Content-Type' => $mime,
         ]));
     }
 
@@ -144,6 +146,18 @@ class ExpensesController extends Controller
         } catch (\Throwable $ignored) {
             // best-effort cleanup
         }
+    }
+
+    private function guessReceiptMimeFromName(string $name): string
+    {
+        return match (strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'heic', 'heif' => 'image/heic',
+            default => 'application/octet-stream',
+        };
     }
 }
 

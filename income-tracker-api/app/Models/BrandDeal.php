@@ -22,6 +22,12 @@ class BrandDeal extends Model
         'due_date',
         'usage_rights',
         'contract',
+        'contract_disk',
+        'contract_path',
+        'contract_original_name',
+        'contract_mime',
+        'contract_size',
+        'contract_legacy_json',
         'notes',
     ];
 
@@ -31,5 +37,7 @@ class BrandDeal extends Model
         'amount' => 'decimal:2',
         'due_date' => 'date:Y-m-d',
         'contract' => 'array',
+        'contract_size' => 'integer',
+        'contract_legacy_json' => 'boolean',
     ];
 }
