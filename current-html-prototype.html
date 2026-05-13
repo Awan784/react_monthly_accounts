@@ -855,9 +855,69 @@ th:first-child{
 }
 .app-root--hidden{display:none;}
 
+/* Full-screen loader for async actions (API, login, file fetches) */
+.global-loader{
+  position:fixed;
+  inset:0;
+  z-index:100000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .2s ease, visibility .2s ease;
+}
+.global-loader.global-loader--active{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.global-loader__backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(17,24,39,.18);
+  backdrop-filter:blur(3px);
+}
+.global-loader__panel{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  padding:22px 28px;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 12px 40px rgba(17,24,39,.12), 0 0 0 1px rgba(17,24,39,.06);
+}
+.global-loader__spinner{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:3px solid #e5e7eb;
+  border-top-color:#293d7c;
+  animation:globalLoaderSpin .65s linear infinite;
+}
+.global-loader__text{
+  font-size:13px;
+  font-weight:600;
+  color:#374151;
+  letter-spacing:.02em;
+}
+@keyframes globalLoaderSpin{
+  to{ transform:rotate(360deg); }
+}
+
 </style>
 </head>
 <body>
+<div id="globalLoader" class="global-loader" aria-live="polite" aria-busy="false">
+  <div class="global-loader__backdrop"></div>
+  <div class="global-loader__panel">
+    <div class="global-loader__spinner" role="status" aria-label="Loading"></div>
+    <div class="global-loader__text">Loading…</div>
+  </div>
+</div>
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
     <h2>Sign in</h2>
@@ -1673,6 +1733,7 @@ async function submitLogin(ev){
   if(errEl) errEl.textContent = "";
   const email = ($("loginEmail") && $("loginEmail").value || "").trim();
   const password = $("loginPassword") && $("loginPassword").value || "";
+  showGlobalLoader();
   try{
     const res = await fetch(`${API_BASE}/login`, {
       method:"POST",
@@ -1699,10 +1760,13 @@ async function submitLogin(ev){
     await setup();
   }catch(e){
     if(errEl) errEl.textContent = e.message || "Sign in failed.";
+  }finally{
+    hideGlobalLoader();
   }
 }
 
 async function logout(){
+  resetGlobalLoader();
   try{
     await api("/logout", { method:"POST" });
   }catch(e){
@@ -1725,6 +1789,7 @@ async function bootApp(){
     await setup();
   }catch(e){
     console.warn("Session invalid:", e);
+    resetGlobalLoader();
     clearAuthToken();
     setLoginVisible(true);
     toast("Please sign in again.");
@@ -1764,44 +1829,73 @@ const curYear = () => new Date().getFullYear();
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const esc = v => String(v??"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 
+let __globalLoaderDepth = 0;
+function showGlobalLoader(){
+  __globalLoaderDepth++;
+  const el = $("globalLoader");
+  if(!el) return;
+  el.setAttribute("aria-busy","true");
+  requestAnimationFrame(()=> el.classList.add("global-loader--active"));
+}
+function hideGlobalLoader(){
+  __globalLoaderDepth = Math.max(0, __globalLoaderDepth - 1);
+  const el = $("globalLoader");
+  if(!el || __globalLoaderDepth > 0) return;
+  el.classList.remove("global-loader--active");
+  el.setAttribute("aria-busy","false");
+}
+function resetGlobalLoader(){
+  __globalLoaderDepth = 0;
+  const el = $("globalLoader");
+  if(!el) return;
+  el.classList.remove("global-loader--active");
+  el.setAttribute("aria-busy","false");
+}
+
 async function api(path, init){
   init = init || {};
-  const isForm = init.body instanceof FormData;
-  const skipAuth = !!init.skipAuth;
-  const token = !skipAuth ? getAuthToken() : null;
-  const { skipAuth:_skip, ...fetchInit } = init;
-  const headers = {
-    accept:"application/json",
-    ...(!isForm ? { "content-type":"application/json" } : {}),
-    ...(token ? { authorization:`Bearer ${token}` } : {}),
-    ...(fetchInit.headers || {})
-  };
-  const res = await fetch(`${API_BASE}${path}`, { ...fetchInit, headers });
-  if(!res.ok){
-    const ct = res.headers.get("content-type") || "";
-    if(ct.includes("application/json")){
-      const json = await res.json().catch(()=> null);
-      const msg =
-        (json && json.message) ||
-        (json && json.error) ||
-        (json && json.errors && Object.values(json.errors).flat().join(" ")) ||
-        `HTTP ${res.status}`;
-      const err = new Error(msg);
+  const useLoader = !init.skipLoader;
+  if(useLoader) showGlobalLoader();
+  try{
+    const isForm = init.body instanceof FormData;
+    const skipAuth = !!init.skipAuth;
+    const token = !skipAuth ? getAuthToken() : null;
+    const { skipAuth:_skip, skipLoader:_loader, ...fetchInit } = init;
+    const headers = {
+      accept:"application/json",
+      ...(!isForm ? { "content-type":"application/json" } : {}),
+      ...(token ? { authorization:`Bearer ${token}` } : {}),
+      ...(fetchInit.headers || {})
+    };
+    const res = await fetch(`${API_BASE}${path}`, { ...fetchInit, headers });
+    if(!res.ok){
+      const ct = res.headers.get("content-type") || "";
+      if(ct.includes("application/json")){
+        const json = await res.json().catch(()=> null);
+        const msg =
+          (json && json.message) ||
+          (json && json.error) ||
+          (json && json.errors && Object.values(json.errors).flat().join(" ")) ||
+          `HTTP ${res.status}`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.payload = json;
+        throw err;
+      }
+      const txt = await res.text().catch(()=> "");
+      const hint = res.status === 404 && txt.includes("The requested path could not be found")
+        ? ` (API base looks wrong: ${API_BASE})`
+        : "";
+      const err = new Error((txt ? txt.slice(0, 300) : `HTTP ${res.status}`) + hint);
       err.status = res.status;
-      err.payload = json;
       throw err;
     }
-    const txt = await res.text().catch(()=> "");
-    const hint = res.status === 404 && txt.includes("The requested path could not be found")
-      ? ` (API base looks wrong: ${API_BASE})`
-      : "";
-    const err = new Error((txt ? txt.slice(0, 300) : `HTTP ${res.status}`) + hint);
-    err.status = res.status;
-    throw err;
+    const ct = res.headers.get("content-type") || "";
+    if(ct.includes("application/json")) return await res.json();
+    return null;
+  }finally{
+    if(useLoader) hideGlobalLoader();
   }
-  const ct = res.headers.get("content-type") || "";
-  if(ct.includes("application/json")) return await res.json();
-  return null;
 }
 
 function idByName(rows, name){
@@ -2289,29 +2383,34 @@ async function viewReceipt(id){
       return;
     }
     try{
-      const path = `/expenses/${encodeURIComponent(expense.id)}/receipt`;
-      const res = await fetch(`${API_BASE}${path}`, {
-        method:"GET",
-        headers:{ authorization:`Bearer ${token}` }
-      });
-      if(!res.ok){
-        const txt = await res.text().catch(()=> "");
-        throw new Error(txt.slice(0, 240) || `HTTP ${res.status}`);
+      showGlobalLoader();
+      try{
+        const path = `/expenses/${encodeURIComponent(expense.id)}/receipt`;
+        const res = await fetch(`${API_BASE}${path}`, {
+          method:"GET",
+          headers:{ authorization:`Bearer ${token}` }
+        });
+        if(!res.ok){
+          const txt = await res.text().catch(()=> "");
+          throw new Error(txt.slice(0, 240) || `HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), expense.receipt.name || "receipt");
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank", "noopener,noreferrer");
+        if(!win){
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fname;
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+        setTimeout(()=> URL.revokeObjectURL(url), 120000);
+      }finally{
+        hideGlobalLoader();
       }
-      const blob = await res.blob();
-      const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), expense.receipt.name || "receipt");
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank", "noopener,noreferrer");
-      if(!win){
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fname;
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-      setTimeout(()=> URL.revokeObjectURL(url), 120000);
     }catch(err){
       alert("Could not open receipt: " + (err.message || err));
     }
@@ -2448,6 +2547,7 @@ async function viewBrandContract(id){
 
   const token = getAuthToken();
   if(token){
+    showGlobalLoader();
     try{
       const res = await fetch(`${API_BASE}/brand-deals/${encodeURIComponent(id)}/contract`, {
         method:"GET",
@@ -2472,6 +2572,8 @@ async function viewBrandContract(id){
       }
     }catch(err){
       console.warn(err);
+    }finally{
+      hideGlobalLoader();
     }
   }
 
@@ -4917,6 +5019,7 @@ function importSelectedBackup(){
     return;
   }
 
+  showGlobalLoader();
   const reader = new FileReader();
   reader.onload = () => {
     try{
@@ -4944,7 +5047,13 @@ function importSelectedBackup(){
       logAction("Backup Imported", selectedBackupFile.name); save(); toast("Backup restored successfully");
     } catch(err){
       alert("This does not look like a valid Income Tracker JSON backup file.");
+    } finally{
+      hideGlobalLoader();
     }
+  };
+  reader.onerror = ()=>{
+    hideGlobalLoader();
+    alert("Could not read the backup file.");
   };
   reader.readAsText(selectedBackupFile);
 }
