@@ -1904,8 +1904,9 @@ function idByName(rows, name){
   return hit ? hit.id : null;
 }
 
-async function syncSettingsFromApi(){
-  const boot = await api("/settings/bootstrap", { method:"GET" });
+async function syncSettingsFromApi(opts){
+  opts = opts || {};
+  const boot = await api("/settings/bootstrap", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) });
   remoteSettings = boot || remoteSettings;
 
   // Keep the prototype's state shape (arrays of strings) so the rest of the UI keeps working.
@@ -2000,11 +2001,12 @@ function renderSystemUsers(){
   $("systemUsersTable").innerHTML = table(["Name","Email","Role","Action"], rows, true);
 }
 
-async function syncIncomeFromApi(){
+async function syncIncomeFromApi(opts){
+  opts = opts || {};
   const [dailyRows, monthlyRows, externalRows] = await Promise.all([
-    api("/daily-entries", { method:"GET" }),
-    api("/monthly-totals", { method:"GET" }),
-    api("/external-income", { method:"GET" })
+    api("/daily-entries", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) }),
+    api("/monthly-totals", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) }),
+    api("/external-income", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) })
   ]);
 
   // Map backend shape back into prototype state shape
@@ -2049,8 +2051,9 @@ async function syncIncomeFromApi(){
   renderAll();
 }
 
-async function syncBrandDealsFromApi(){
-  const rows = await api("/brand-deals", { method:"GET" });
+async function syncBrandDealsFromApi(opts){
+  opts = opts || {};
+  const rows = await api("/brand-deals", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) });
   state.brands = (rows || []).map(r => ({
     id: r.client_id,
     date: r.date,
@@ -2078,8 +2081,9 @@ async function syncBrandDealsFromApi(){
   renderAll();
 }
 
-async function syncExpensesFromApi(){
-  const rows = await api("/expenses", { method:"GET" });
+async function syncExpensesFromApi(opts){
+  opts = opts || {};
+  const rows = await api("/expenses", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) });
 
   state.expenses = (rows || []).map(r => ({
     id: r.clientId || r.client_id,
@@ -2101,8 +2105,9 @@ async function syncExpensesFromApi(){
   renderAll();
 }
 
-async function syncCloseoutsFromApi(){
-  const rows = await api("/closeouts", { method:"GET" });
+async function syncCloseoutsFromApi(opts){
+  opts = opts || {};
+  const rows = await api("/closeouts", { method:"GET", ...(opts.skipLoader ? { skipLoader:true } : {}) });
   state.closeouts = (rows || []).map(r => ({
     id: `${r.year}-${r.month}`,
     month: r.month,
@@ -3231,13 +3236,38 @@ function gridYear(){
   return Number.isFinite(y) && y > 1900 && y < 2200 ? y : curYear();
 }
 function tiktokMonthlyGridAccountNames(){
-  const base = [...(state.settings.accounts||[])];
   const yr = gridYear();
-  const hasUnassigned = (state.brands||[]).some(b=>{
-    if(+b.year !== +yr) return false;
-    if(!platformMatchesRecord(b.platform, "TikTok Shop")) return false;
-    return !normGridStr(b.account);
-  });
+  const base = [...(state.settings.accounts||[])].filter(a=>String(a||"").trim() !== "");
+
+  // If accounts are missing (common after imports / partial bootstrap), derive from data so the grid still renders.
+  if(base.length === 0){
+    const inferred = new Set();
+    (state.daily||[]).forEach(r=>{
+      if(+r.year !== +yr) return;
+      if(!platformMatchesRecord(r.platform, "TikTok Shop")) return;
+      const a = (r.account ?? "").toString().trim();
+      if(a) inferred.add(a);
+    });
+    (state.monthlyAdjustments||[]).forEach(r=>{
+      if(+r.year !== +yr) return;
+      if(!platformMatchesRecord(r.platform, "TikTok Shop")) return;
+      const a = (r.account ?? "").toString().trim();
+      if(a) inferred.add(a);
+    });
+    (state.brands||[]).forEach(r=>{
+      if(+r.year !== +yr) return;
+      if(!platformMatchesRecord(r.platform, "TikTok Shop")) return;
+      const a = (r.account ?? "").toString().trim();
+      if(a) inferred.add(a);
+    });
+    base.push(...Array.from(inferred));
+  }
+
+  if(base.length === 0) base.push(...defaultAccounts());
+  const hasUnassigned =
+    (state.brands||[]).some(b=> +b.year===+yr && platformMatchesRecord(b.platform, "TikTok Shop") && !normGridStr(b.account)) ||
+    (state.daily||[]).some(b=> +b.year===+yr && platformMatchesRecord(b.platform, "TikTok Shop") && !normGridStr(b.account)) ||
+    (state.monthlyAdjustments||[]).some(b=> +b.year===+yr && platformMatchesRecord(b.platform, "TikTok Shop") && !normGridStr(b.account));
   if(hasUnassigned && !base.includes("(No account)")) base.push("(No account)");
   return base;
 }
@@ -4028,46 +4058,46 @@ function showPage(id){
 
   // Keep the Expenses table synced with DB when you open the tab.
   if(id === "expenses"){
-    syncExpensesFromApi().catch(err=>console.warn("Could not sync expenses from backend:", err));
+    syncExpensesFromApi({ skipLoader:true }).catch(err=>console.warn("Could not sync expenses from backend:", err));
   }
 
   // Payments Owed is derived from Brand Deals (status != Paid).
   if(id === "payments"){
-    syncBrandDealsFromApi().catch(err=>console.warn("Could not sync brand deals from backend:", err));
+    syncBrandDealsFromApi({ skipLoader:true }).catch(err=>console.warn("Could not sync brand deals from backend:", err));
   }
 
   // Reports are derived from all core datasets. Refresh from DB when opening.
   if(id === "reports"){
     Promise.all([
-      syncIncomeFromApi(),
-      syncBrandDealsFromApi(),
-      syncExpensesFromApi(),
+      syncIncomeFromApi({ skipLoader:true }),
+      syncBrandDealsFromApi({ skipLoader:true }),
+      syncExpensesFromApi({ skipLoader:true }),
     ]).catch(err=>console.warn("Could not sync reports data from backend:", err));
   }
 
   if(id === "closeout"){
-    syncCloseoutsFromApi().catch(err=>console.warn("Could not sync closeouts from backend:", err));
+    syncCloseoutsFromApi({ skipLoader:true }).catch(err=>console.warn("Could not sync closeouts from backend:", err));
   }
 
   // Settings screen (Platforms/Accounts/Categories/Usage Rights) should always reflect DB.
   if(id === "settings"){
-    syncSettingsFromApi().catch(err=>console.warn("Could not sync settings from backend:", err));
+    syncSettingsFromApi({ skipLoader:true }).catch(err=>console.warn("Could not sync settings from backend:", err));
   }
 
   // Monthly Grid is computed from Monthly Totals + Daily Entries + Settings.
   if(id === "monthly"){
-    Promise.all([syncSettingsFromApi(), syncIncomeFromApi(), syncBrandDealsFromApi()])
+    Promise.all([syncSettingsFromApi({ skipLoader:true }), syncIncomeFromApi({ skipLoader:true }), syncBrandDealsFromApi({ skipLoader:true })])
       .catch(err=>console.warn("Could not sync monthly grid data from backend:", err));
   }
 
   // Overview KPIs + tables are derived from all core datasets.
   if(id === "overview"){
     Promise.all([
-      syncSettingsFromApi(),
-      syncIncomeFromApi(),
-      syncBrandDealsFromApi(),
-      syncExpensesFromApi(),
-      syncCloseoutsFromApi()
+      syncSettingsFromApi({ skipLoader:true }),
+      syncIncomeFromApi({ skipLoader:true }),
+      syncBrandDealsFromApi({ skipLoader:true }),
+      syncExpensesFromApi({ skipLoader:true }),
+      syncCloseoutsFromApi({ skipLoader:true })
     ]).catch(err=>console.warn("Could not sync overview data from backend:", err));
   }
 }
