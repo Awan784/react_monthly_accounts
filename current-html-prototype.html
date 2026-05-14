@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Income Tracker</title>
+<title>DynamiteOS</title>
 <style>
 :root{
   --navy:#141942;
@@ -217,6 +217,27 @@ th:first-child{
   padding:5px 8px;
   font-size:12px;
   margin:1px;
+}
+.audit-log-pager{
+  padding:10px 12px;
+  border-top:1px solid var(--line);
+  background:#fafbff;
+}
+.audit-log-pager-inner{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.audit-log-pager-btns{
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+}
+.audit-log-pager button:disabled{
+  opacity:0.45;
+  cursor:not-allowed;
 }
 .status{
   display:inline-block;
@@ -604,6 +625,13 @@ th:first-child{
   height:auto;
   border-radius:8px;
 }
+.receipt-modal-inner iframe{
+  width:100%;
+  min-height:72vh;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#f3f4f6;
+}
 .receipt-modal-actions{
   display:flex;
   justify-content:space-between;
@@ -921,7 +949,7 @@ th:first-child{
 <div class="login-screen" id="loginScreen">
   <div class="login-card">
     <h2>Sign in</h2>
-    <p class="tagline">Income Tracker — use your API account credentials.</p>
+    <p class="tagline">DynamiteOS — use your API account credentials.</p>
     <form id="loginForm" onsubmit="submitLogin(event)">
       <label for="loginEmail">Email</label>
       <input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@admin.com">
@@ -938,7 +966,7 @@ th:first-child{
 <div id="appRoot" class="app-root app-root--hidden">
 <header>
   <div class="brand">
-    <h1>Income Tracker</h1>
+    <h1>DynamiteOS</h1>
     <small>Track. Prove. Charge. | Know your worth.</small>
   </div>
   <div class="controls">
@@ -1627,8 +1655,9 @@ th:first-child{
     </div>
 
     <div class="section">
-      <div class="section-title">Audit Log <span class="note">Recent adds, edits, deletes, imports, and exports</span></div>
+      <div class="section-title">Audit Log <span class="note">Recent adds, edits, deletes, imports, and exports (10 per page)</span></div>
       <div class="table-wrap"><table id="auditLogTable"></table></div>
+      <div class="audit-log-pager" id="auditLogPager" aria-label="Audit log pages"></div>
     </div>
   </section>
 
@@ -1666,13 +1695,18 @@ th:first-child{
 </main>
 </div>
 
-<div class="receipt-modal" id="receiptModal">
-  <div class="receipt-modal-inner">
+<div class="receipt-modal" id="receiptModal" onclick="if(event.target===this)closeReceiptModal()">
+  <div class="receipt-modal-inner" onclick="event.stopPropagation()">
     <div class="receipt-modal-actions">
-      <strong>Receipt</strong>
-      <button class="light" onclick="closeReceiptModal()">Close</button>
+      <strong id="receiptModalTitle">Receipt</strong>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <a id="receiptModalDownload" class="light" href="#" download="file" style="display:none;text-decoration:none;text-align:center">Download</a>
+        <button type="button" class="light" onclick="closeReceiptModal()">Close</button>
+      </div>
     </div>
-    <img id="receiptModalImage" alt="Receipt preview">
+    <img id="receiptModalImage" alt="File preview" style="display:none">
+    <iframe id="receiptModalFrame" title="File preview" style="display:none"></iframe>
+    <div id="receiptModalFallback" class="note" style="display:none;padding:12px 0;line-height:1.45"></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -1680,6 +1714,8 @@ th:first-child{
 <script>
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const storeKey = "incomeTrackerReceiptUploadFixedV1";
+/** Persists top dashboard year across tabs and overlapping API syncs (sessionStorage). */
+const DASHBOARD_YEAR_FILTER_KEY = "dynamiteosDashboardYear";
 let pendingExpenseReceipt = null;
 let pendingBrandContract = null;
 const DEFAULT_API_BASE = "http://127.0.0.1:8000/api";
@@ -1819,6 +1855,9 @@ let state = {daily:[], brands:[], expenses:[], external:[], monthlyAdjustments:[
     usageUnlimited:7500
   }
 }};
+
+const AUDIT_LOG_PAGE_SIZE = 10;
+let auditLogPage = 1;
 
 const $ = id => document.getElementById(id);
 const money = n => Number(n||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
@@ -2225,7 +2264,6 @@ async function setup(){
   ["dailyDate","brandDate","expenseDate","externalDate"].forEach(id=>{ if($(id)) $(id).value=today(); });
   ["dailyMonth","brandMonth","expenseMonth","externalMonth","monthlyAdjustmentMonth","closeoutMonth"].forEach(id=>{ if($(id)) $(id).value=curMonth(); });
   ["dailyYear","brandYear","expenseYear","externalYear","monthlyAdjustmentYear","closeoutYear"].forEach(id=>{ if($(id)) $(id).value=curYear(); });
-  $("yearFilter").value = curYear();
   $("monthFilter").value = "All";
   if($("startDateFilter")) $("startDateFilter").value = today();
   if($("endDateFilter")) $("endDateFilter").value = today();
@@ -2260,10 +2298,56 @@ function fillMonths(){
     months.forEach(m=>$(id).insertAdjacentHTML("beforeend",`<option>${m}</option>`));
   });
 }
+function readStoredDashboardYear(){
+  try{
+    const s = sessionStorage.getItem(DASHBOARD_YEAR_FILTER_KEY);
+    if(s != null && s !== "" && Number.isFinite(+s)) return +s;
+  }catch(e){}
+  return NaN;
+}
+function persistDashboardYearToStorage(y){
+  try{
+    if(y != null && Number.isFinite(+y) && +y > 1900 && +y < 2200){
+      sessionStorage.setItem(DASHBOARD_YEAR_FILTER_KEY, String(+y));
+    }
+  }catch(e){}
+}
 function fillYears(){
-  const years = new Set([curYear(),...state.daily.map(x=>x.year),...state.brands.map(x=>x.year),...state.expenses.map(x=>x.year),...state.external.map(x=>x.year),...state.monthlyAdjustments.map(x=>x.year),...state.closeouts.map(x=>x.year)]);
-  $("yearFilter").innerHTML = "";
-  [...years].sort((a,b)=>b-a).forEach(y=>$("yearFilter").insertAdjacentHTML("beforeend",`<option>${y}</option>`));
+  const sel = $("yearFilter");
+  if(!sel) return;
+
+  const fromDom = sel.value !== "" && Number.isFinite(+sel.value) ? +sel.value : NaN;
+  const stored = readStoredDashboardYear();
+  const previous = Number.isFinite(fromDom) ? fromDom : stored;
+
+  const ys = new Set();
+  ys.add(curYear());
+  const addYear = v=>{
+    if(v == null || v === "") return;
+    const y = +v;
+    if(Number.isFinite(y) && y > 1900 && y < 2200) ys.add(y);
+  };
+  (state.daily||[]).forEach(x=>addYear(x.year));
+  (state.brands||[]).forEach(x=>addYear(x.year));
+  (state.expenses||[]).forEach(x=>addYear(x.year));
+  (state.external||[]).forEach(x=>addYear(x.year));
+  (state.monthlyAdjustments||[]).forEach(x=>addYear(x.year));
+  (state.closeouts||[]).forEach(x=>addYear(x.year));
+
+  const sorted = [...ys].sort((a,b)=>b-a);
+  sel.innerHTML = "";
+  sorted.forEach(y=>{
+    sel.insertAdjacentHTML("beforeend", `<option value="${y}">${y}</option>`);
+  });
+
+  let pick;
+  if(Number.isFinite(previous) && sorted.includes(previous)) pick = previous;
+  else if(Number.isFinite(stored) && sorted.includes(stored)) pick = stored;
+  else if(sorted.includes(curYear())) pick = curYear();
+  else pick = sorted.length ? sorted[0] : curYear();
+
+  sel.value = String(pick);
+  persistDashboardYearToStorage(pick);
 }
 function optionList(values){
   return values.map(v=>`<option>${esc(v)}</option>`).join("");
@@ -2374,6 +2458,134 @@ async function previewExpenseReceipt(event){
   }
 }
 
+let __attachmentPreviewObjectUrl = null;
+
+function revokeAttachmentPreviewObjectUrl(){
+  if(__attachmentPreviewObjectUrl){
+    try{ URL.revokeObjectURL(__attachmentPreviewObjectUrl); }catch(e){}
+    __attachmentPreviewObjectUrl = null;
+  }
+}
+
+function fileLooksPdf(filename, mime){
+  const m = String(mime || "").toLowerCase();
+  if(m.includes("pdf")) return true;
+  return /\.pdf$/i.test(String(filename || ""));
+}
+
+function fileLooksImage(filename, mime){
+  if(String(mime || "").toLowerCase().startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|bmp)$/i.test(String(filename || ""));
+}
+
+function openAttachmentPreviewModal(opts){
+  opts = opts || {};
+  const img = $("receiptModalImage");
+  const frame = $("receiptModalFrame");
+  const fallback = $("receiptModalFallback");
+  const dl = $("receiptModalDownload");
+  const modal = $("receiptModal");
+  if(!modal || !img || !frame || !fallback) return;
+
+  if(img){ img.removeAttribute("src"); img.style.display = "none"; }
+  if(frame){ frame.removeAttribute("src"); frame.style.display = "none"; }
+  revokeAttachmentPreviewObjectUrl();
+
+  const titleEl = $("receiptModalTitle");
+  if(titleEl) titleEl.textContent = opts.title || "File";
+  fallback.style.display = "none";
+  fallback.textContent = "";
+
+  if(dl){
+    dl.style.display = "none";
+    dl.removeAttribute("href");
+    dl.removeAttribute("download");
+  }
+
+  if(opts.objectUrlForRevoke) __attachmentPreviewObjectUrl = opts.objectUrlForRevoke;
+
+  if(opts.imageSrc){
+    img.src = opts.imageSrc;
+    img.style.display = "block";
+  }else if(opts.frameSrc){
+    frame.src = opts.frameSrc;
+    frame.style.display = "block";
+  }else if(opts.fallbackText){
+    fallback.textContent = opts.fallbackText;
+    fallback.style.display = "block";
+  }
+
+  if(dl && opts.downloadHref){
+    dl.href = opts.downloadHref;
+    dl.setAttribute("download", opts.downloadName || "download");
+    dl.style.display = "inline-block";
+  }
+
+  modal.classList.add("open");
+}
+
+function openBlobFilePreviewModal(title, blob, filename){
+  const fname = filename || "file";
+  const url = URL.createObjectURL(blob);
+  const mime = (blob && blob.type) || "";
+  const isImage = fileLooksImage(fname, mime);
+  const isPdf = fileLooksPdf(fname, mime);
+  if(isImage){
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      imageSrc: url,
+      objectUrlForRevoke: url,
+      downloadHref: url,
+      downloadName: fname
+    });
+  }else if(isPdf){
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      frameSrc: url,
+      objectUrlForRevoke: url,
+      downloadHref: url,
+      downloadName: fname
+    });
+  }else{
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      fallbackText: "Preview is not available in the browser for this file type. Use Download to save it and open it on your device.",
+      objectUrlForRevoke: url,
+      downloadHref: url,
+      downloadName: fname
+    });
+  }
+}
+
+function openDataUrlFilePreviewModal(title, dataUrl, filename, mimeHint){
+  const fname = filename || "file";
+  const mime = String(mimeHint || "").toLowerCase();
+  const isImage = fileLooksImage(fname, mime) || (dataUrl && String(dataUrl).startsWith("data:image/"));
+  const isPdf = fileLooksPdf(fname, mime) || (dataUrl && String(dataUrl).startsWith("data:application/pdf"));
+  if(isImage){
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      imageSrc: dataUrl,
+      downloadHref: dataUrl,
+      downloadName: fname
+    });
+  }else if(isPdf){
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      frameSrc: dataUrl,
+      downloadHref: dataUrl,
+      downloadName: fname
+    });
+  }else{
+    openAttachmentPreviewModal({
+      title: title || "Preview",
+      fallbackText: "Preview is not available in the browser for this file type. Use Download to save it and open it on your device.",
+      downloadHref: dataUrl,
+      downloadName: fname
+    });
+  }
+}
+
 async function viewReceipt(id){
   const expense = state.expenses.find(x=>x.id===id);
   if(!expense || !expense.receipt){
@@ -2401,18 +2613,7 @@ async function viewReceipt(id){
         }
         const blob = await res.blob();
         const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), expense.receipt.name || "receipt");
-        const url = URL.createObjectURL(blob);
-        const win = window.open(url, "_blank", "noopener,noreferrer");
-        if(!win){
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = fname;
-          a.rel = "noopener";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        }
-        setTimeout(()=> URL.revokeObjectURL(url), 120000);
+        openBlobFilePreviewModal("Receipt", blob, fname);
       }finally{
         hideGlobalLoader();
       }
@@ -2428,24 +2629,7 @@ async function viewReceipt(id){
   }
 
   const type = expense.receipt.type || "";
-
-  if(type.startsWith("image/")){
-    $("receiptModalImage").src = expense.receipt.data;
-    $("receiptModal").classList.add("open");
-    return;
-  }
-
-  const win = window.open();
-  if(!win){
-    alert("Popup blocked. Allow popups to view or download the receipt.");
-    return;
-  }
-
-  if(type.includes("pdf")){
-    win.document.write(`<iframe src="${expense.receipt.data}" style="width:100%;height:100vh;border:0"></iframe>`);
-  }else{
-    win.document.write(`<a href="${expense.receipt.data}" download="${expense.receipt.name || "receipt"}">Download ${expense.receipt.name || "receipt"}</a>`);
-  }
+  openDataUrlFilePreviewModal("Receipt", expense.receipt.data, expense.receipt.name || "receipt", type);
 }
 
 function renderReceiptPreview(receipt){
@@ -2472,8 +2656,17 @@ function renderReceiptPreview(receipt){
 }
 
 function closeReceiptModal(){
-  $("receiptModal").classList.remove("open");
-  $("receiptModalImage").src = "";
+  const modal = $("receiptModal");
+  if(modal) modal.classList.remove("open");
+  const img = $("receiptModalImage");
+  if(img){ img.removeAttribute("src"); img.style.display = "none"; }
+  const frame = $("receiptModalFrame");
+  if(frame){ frame.removeAttribute("src"); frame.style.display = "none"; }
+  const fallback = $("receiptModalFallback");
+  if(fallback){ fallback.textContent = ""; fallback.style.display = "none"; }
+  const dl = $("receiptModalDownload");
+  if(dl){ dl.style.display = "none"; dl.removeAttribute("href"); dl.removeAttribute("download"); }
+  revokeAttachmentPreviewObjectUrl();
 }
 
 
@@ -2561,18 +2754,7 @@ async function viewBrandContract(id){
       if(res.ok){
         const blob = await res.blob();
         const fname = parseFilenameFromContentDisposition(res.headers.get("content-disposition"), deal.contract.name || "contract");
-        const url = URL.createObjectURL(blob);
-        const win = window.open(url, "_blank", "noopener,noreferrer");
-        if(!win){
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = fname;
-          a.rel = "noopener";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        }
-        setTimeout(()=> URL.revokeObjectURL(url), 120000);
+        openBlobFilePreviewModal("Contract", blob, fname);
         return;
       }
     }catch(err){
@@ -2583,17 +2765,8 @@ async function viewBrandContract(id){
   }
 
   if(deal.contract.data){
-    const win = window.open();
-    if(!win){
-      alert("Popup blocked. Allow popups for this file to view the contract.");
-      return;
-    }
     const t = deal.contract.type || "";
-    if(t.startsWith("image/") || t.includes("pdf")){
-      win.document.write(`<iframe src="${deal.contract.data}" style="width:100%;height:100vh;border:0"></iframe>`);
-    }else{
-      win.document.write(`<a href="${deal.contract.data}" download="${(deal.contract.name || "contract").replace(/"/g, "")}">Download ${esc(deal.contract.name || "contract")}</a>`);
-    }
+    openDataUrlFilePreviewModal("Contract", deal.contract.data, deal.contract.name || "contract", t);
     return;
   }
 
@@ -3086,7 +3259,7 @@ function weekDateRange(baseDate){
 }
 function getActiveDateRange(){
   const mode = $("dateModeFilter") ? $("dateModeFilter").value : "year";
-  const yr = +$("yearFilter").value || curYear();
+  const yr = year();
 
   if(mode === "day"){
     const selected = $("startDateFilter").value || today();
@@ -3131,6 +3304,17 @@ function monthInRange(yr, monthName, range){
   return r.end >= range.start && r.start <= range.end;
 }
 
+/** Daily entry may have no `date` (API allows null); use month+year for calendar buckets. */
+function dailyEntryInDateRange(x, range){
+  if(!x || !range) return false;
+  const dateStr = x.date != null ? String(x.date).trim() : "";
+  if(dateStr) return dateInRange(dateStr, range);
+  if(x.month != null && String(x.month).trim() !== "" && x.year != null && Number.isFinite(+x.year)){
+    return monthInRange(+x.year, x.month, range);
+  }
+  return false;
+}
+
 /** Canonical status for comparisons (API / local may vary in casing). */
 function normalizeBrandStatus(s){
   const t = (s == null ? "" : String(s)).trim().toLowerCase();
@@ -3172,7 +3356,37 @@ function syncDateFilterUI(){
   if($("endDateFilter")) $("endDateFilter").style.display = showEnd ? "" : "none";
 }
 
-function year(){return +$("yearFilter").value}
+function year(){
+  const sel = $("yearFilter");
+  const y = sel && sel.value !== "" ? +sel.value : NaN;
+  if(Number.isFinite(y) && y > 1900 && y < 2200) return y;
+  const st = readStoredDashboardYear();
+  if(Number.isFinite(st) && st > 1900 && st < 2200) return st;
+  return curYear();
+}
+
+/**
+ * Pace for "monthly needed to hit annual goal" based on the **selected dashboard year**
+ * vs today's calendar date (not always the current calendar year).
+ */
+function dashboardYearPaceContext(yr){
+  const y = +yr;
+  const now = new Date();
+  const calY = now.getFullYear();
+  const calM = now.getMonth() + 1;
+
+  if(!Number.isFinite(y) || y < 1900 || y > 2200){
+    return { remainingMonths: 12, elapsedMonths: 0, isPast:false, isFuture:false };
+  }
+  if(y < calY){
+    return { remainingMonths: 0, elapsedMonths: 12, isPast:true, isFuture:false };
+  }
+  if(y > calY){
+    return { remainingMonths: 12, elapsedMonths: 0, isPast:false, isFuture:true };
+  }
+  const remainingMonths = Math.max(0, 12 - calM + 1);
+  return { remainingMonths, elapsedMonths: calM, isPast:false, isFuture:false };
+}
 function month(){return $("monthFilter").value}
 function inPeriod(x){
   const range = getActiveDateRange();
@@ -3221,7 +3435,15 @@ function normGridStr(v){
 }
 function platformMatchesRecord(recordPlatform, filterPlatform){
   if(!filterPlatform || filterPlatform==="All Platforms") return true;
-  return normGridStr(recordPlatform) === normGridStr(filterPlatform);
+  const want = normGridStr(filterPlatform);
+  const n = normGridStr(recordPlatform);
+  if(want === normGridStr("TikTok Shop")){
+    if(n === want) return true;
+    const compact = n.replace(/\s+/g,"");
+    if(n === "tiktok" || n === "tik tok" || compact === "tiktokshop") return true;
+    return false;
+  }
+  return n === want;
 }
 function accountMatchesGridRow(recordAccount, gridRowName){
   const row = (gridRowName??"").toString().trim();
@@ -3232,8 +3454,7 @@ function accountMatchesGridRow(recordAccount, gridRowName){
   return normGridStr(rec) === normGridStr(row);
 }
 function gridYear(){
-  const y = +($("yearFilter") && $("yearFilter").value);
-  return Number.isFinite(y) && y > 1900 && y < 2200 ? y : curYear();
+  return year();
 }
 function tiktokMonthlyGridAccountNames(){
   const yr = gridYear();
@@ -3351,7 +3572,7 @@ function adjustmentInRange(adj, range){
 }
 
 function baseDailyRowsForRange(range, platformName=null, accountName=null){
-  let rows = state.daily.filter(x=>dateInRange(x.date, range));
+  let rows = state.daily.filter(x=>dailyEntryInDateRange(x, range));
   if(platformName && platformName !== "All Platforms") rows = rows.filter(x=> platformMatchesRecord(x.platform, platformName));
   if(accountName) rows = rows.filter(x=> accountMatchesGridRow(x.account, accountName));
   return rows;
@@ -3505,15 +3726,21 @@ function renderIncomeForecast(){
   const yr = year();
   const full = totals(periodForFilters({yr:yr}));
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const monthIndex = currentYear === yr ? now.getMonth() + 1 : 12;
-  const monthsPassed = Math.max(1, monthIndex);
-  const monthsRemaining = Math.max(0, 12 - monthsPassed);
-
-  const projectedAnnual = (full.totalIncome / monthsPassed) * 12;
+  const pace = dashboardYearPaceContext(yr);
   const annualGoal = state.settings.incomeGoal || 0;
-  const neededMonthly = monthsRemaining > 0 ? Math.max(0, (annualGoal - full.totalIncome) / monthsRemaining) : 0;
+  const neededMonthly = pace.remainingMonths > 0
+    ? Math.max(0, (annualGoal - full.totalIncome) / pace.remainingMonths)
+    : 0;
+
+  let projectedAnnual;
+  if(pace.isPast){
+    projectedAnnual = full.totalIncome;
+  }else if(pace.isFuture){
+    projectedAnnual = full.totalIncome;
+  }else{
+    const em = Math.max(1, pace.elapsedMonths);
+    projectedAnnual = (full.totalIncome / em) * 12;
+  }
   const goalGap = annualGoal ? projectedAnnual - annualGoal : 0;
 
   const selectedMonthName = month() === "All" ? curMonth() : month();
@@ -3859,9 +4086,24 @@ function renderCloseout(){
   $("closeoutBackup").checked = !!current.backup;
 }
 
+function auditLogSetPage(page){
+  const log = Array.isArray(state.auditLog) ? state.auditLog : [];
+  const totalPages = Math.max(1, Math.ceil(log.length / AUDIT_LOG_PAGE_SIZE));
+  auditLogPage = Math.min(totalPages, Math.max(1, +page || 1));
+  renderAuditLog();
+}
+
 function renderAuditLog(){
   if(!$("auditLogTable")) return;
-  const rows = (state.auditLog||[]).slice(0,50).map(x=>{
+  const log = Array.isArray(state.auditLog) ? state.auditLog : [];
+  const total = log.length;
+  const totalPages = Math.max(1, Math.ceil(total / AUDIT_LOG_PAGE_SIZE));
+  if(auditLogPage > totalPages) auditLogPage = totalPages;
+  if(auditLogPage < 1) auditLogPage = 1;
+  const start = (auditLogPage - 1) * AUDIT_LOG_PAGE_SIZE;
+  const pageSlice = log.slice(start, start + AUDIT_LOG_PAGE_SIZE);
+
+  const rows = pageSlice.map(x=>{
     const it = (x.item != null && String(x.item).trim()) ? String(x.item).trim() : "";
     const det = (x.detail != null && String(x.detail).trim()) ? String(x.detail).trim() : "";
     let itemCell = it || det;
@@ -3875,6 +4117,25 @@ function renderAuditLog(){
     ];
   });
   $("auditLogTable").innerHTML = table(["Timestamp","Action","Item affected","User"], rows);
+
+  const pager = $("auditLogPager");
+  if(!pager) return;
+  if(total === 0){
+    pager.innerHTML = `<div class="audit-log-pager-inner"><span class="note">No audit entries yet.</span></div>`;
+    return;
+  }
+  const from = start + 1;
+  const to = start + pageSlice.length;
+  const prevDisabled = auditLogPage <= 1 ? " disabled" : "";
+  const nextDisabled = auditLogPage >= totalPages ? " disabled" : "";
+  pager.innerHTML = `
+    <div class="audit-log-pager-inner">
+      <span class="note">Showing ${from}–${to} of ${total} · Page ${auditLogPage} / ${totalPages}</span>
+      <div class="audit-log-pager-btns">
+        <button type="button" class="light"${prevDisabled} onclick="auditLogSetPage(${auditLogPage - 1})">Previous</button>
+        <button type="button" class="light"${nextDisabled} onclick="auditLogSetPage(${auditLogPage + 1})">Next</button>
+      </div>
+    </div>`;
 }
 
 function renderDailyTable(){
@@ -4700,14 +4961,8 @@ function renderReports(){
     ]);
   }
 
-  const monthRows = months.map((m,i)=>{
-    const d = {
-      daily: state.daily.filter(x=>x.year==yr && x.month===m),
-      brands: state.brands.filter(x=>x.year==yr && x.month===m),
-      expenses: state.expenses.filter(x=>x.year==yr && x.month===m),
-      external: (state.external||[]).filter(x=>x.year==yr && x.month===m)
-    };
-    const t = totals(d);
+  const monthRows = months.map((m)=>{
+    const t = totals(periodForFilters({yr:yr, monthName:m}));
     return {
       month:m,
       income:t.totalIncome,
@@ -4728,14 +4983,21 @@ function renderReports(){
   const full = totals(periodForFilters({yr:yr}));
 
   const annualGoal = state.settings.incomeGoal || 0;
-  const monthlyGoal = state.settings.monthlyGoal || 0;
 
-  const monthsPassed = new Date().getMonth()+1;
-  const monthsRemaining = 12 - monthsPassed;
+  const pace = dashboardYearPaceContext(yr);
+  const paceNeededMonthly = pace.remainingMonths > 0
+    ? Math.max(0, (annualGoal - full.totalIncome) / pace.remainingMonths)
+    : 0;
 
-  const paceNeededMonthly = monthsRemaining > 0 ? (annualGoal - full.totalIncome) / monthsRemaining : 0;
-
-  const forecastAnnual = monthsPassed > 0 ? (full.totalIncome / monthsPassed) * 12 : 0;
+  let forecastAnnual;
+  if(pace.isPast){
+    forecastAnnual = full.totalIncome;
+  }else if(pace.isFuture){
+    forecastAnnual = full.totalIncome;
+  }else{
+    const em = Math.max(1, pace.elapsedMonths);
+    forecastAnnual = (full.totalIncome / em) * 12;
+  }
 
   const currentMonthName = month()==="All" ? curMonth() : month();
   const idx = months.indexOf(currentMonthName);
@@ -4761,6 +5023,8 @@ function renderReports(){
       ["Monthly Needed to Hit Goal", money(paceNeededMonthly)]
     ]
   );
+
+  renderChangeReport(monthRows);
 }
 
 
@@ -4818,8 +5082,8 @@ function paymentAgingTable(yr){
   );
 }
 function exportReportCSV(filename, headers, rows){
-  const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\\n");
-  download(new Blob([csv],{type:"text/csv"}),filename);
+  const csv = [headers,...rows].map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");
+  download(new Blob([csv],{type:"text/csv;charset=utf-8;"}),filename);
 }
 
 async function exportSelectedRangeCSV(){
@@ -4830,7 +5094,7 @@ async function exportSelectedRangeCSV(){
     console.warn("Export: backend sync failed, exporting current state", e);
   }
   const t = totals(getPeriod());
-  exportReportCSV(`income-tracker-selected-range-${today()}.csv`,["Metric","Value"],[
+  exportReportCSV(`dynamiteos-selected-range-${today()}.csv`,["Metric","Value"],[
     ["Date Range", activePeriodLabel()],
     ["Total Income",t.totalIncome],
     ["Net",t.net],
@@ -4854,7 +5118,7 @@ async function exportMonthlyReportCSV(){
     const t = totals(periodForFilters({yr:yr, monthName:m}));
     return [m,t.totalIncome,t.expenses,t.net,t.videos,t.gmv,t.brandPaid,t.owed];
   });
-  exportReportCSV(`income-tracker-monthly-report-${yr}.csv`,["Month","Income","Expenses","Net","Videos","GMV","Paid Brand Deals","Payments Owed"],rows);
+  exportReportCSV(`dynamiteos-monthly-report-${yr}.csv`,["Month","Income","Expenses","Net","Videos","GMV","Paid Brand Deals","Payments Owed"],rows);
 }
 async function exportAnnualReportCSV(){
   try{
@@ -4863,13 +5127,8 @@ async function exportAnnualReportCSV(){
     console.warn("Export: backend sync failed, exporting current state", e);
   }
   const yr = year();
-  const t = totals({
-    daily: state.daily.filter(x=>x.year==yr),
-    brands: state.brands.filter(x=>x.year==yr),
-    expenses: state.expenses.filter(x=>x.year==yr),
-    external: (state.external||[]).filter(x=>x.year==yr)
-  });
-  exportReportCSV(`income-tracker-annual-summary-${yr}.csv`,["Metric","Value"],[
+  const t = totals(periodForFilters({yr:yr}));
+  exportReportCSV(`dynamiteos-annual-summary-${yr}.csv`,["Metric","Value"],[
     ["Total Income",t.totalIncome],
     ["Total Expenses",t.expenses],
     ["Net Profit",t.net],
@@ -4896,7 +5155,7 @@ async function exportPlatformReportCSV(){
     });
     return [p,t.totalIncome,t.net,t.videos,t.videos?t.totalIncome/t.videos:0,t.gmv,t.owed];
   });
-  exportReportCSV(`income-tracker-platform-report-${yr}.csv`,["Platform","Income","Net","Videos","Revenue/Video","GMV","Payments Owed"],rows);
+  exportReportCSV(`dynamiteos-platform-report-${yr}.csv`,["Platform","Income","Net","Videos","Revenue/Video","GMV","Payments Owed"],rows);
 }
 
 
@@ -5005,7 +5264,7 @@ function renderDealCalculator(){
 function exportJSON(){
   logAction("JSON Backup Exported", today());
   save();
-  download(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),`income-tracker-backup-${today()}.json`);
+  download(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),`dynamiteos-backup-${today()}.json`);
 }
 
 function exportCSV(){
@@ -5016,7 +5275,7 @@ function exportCSV(){
   state.external.forEach(x=>rows.push(["External Income",x.date,x.month,x.year,"External","",x.source,"","External Income",x.amount,"","","","","","","", "Excluded from All Social"]));
   (state.monthlyAdjustments||[]).forEach(x=>rows.push(["Monthly Total","",x.month,x.year,x.platform,x.account,"","","Correct Monthly Total",x.amount,x.gmv||0,x.videos||0,x.items||0,"","","","",x.notes||"Overrides monthly performance totals"]));
   const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");
-  download(new Blob([csv],{type:"text/csv"}),`income-tracker-export-${today()}.csv`);
+  download(new Blob([csv],{type:"text/csv"}),`dynamiteos-export-${today()}.csv`);
 }
 function download(blob,name){
   const a=document.createElement("a");
@@ -5076,7 +5335,7 @@ function importSelectedBackup(){
       if(label) label.textContent = "Backup imported successfully";
       logAction("Backup Imported", selectedBackupFile.name); save(); toast("Backup restored successfully");
     } catch(err){
-      alert("This does not look like a valid Income Tracker JSON backup file.");
+      alert("This does not look like a valid DynamiteOS JSON backup file.");
     } finally{
       hideGlobalLoader();
     }
@@ -5117,7 +5376,10 @@ function clearData(){
 function toast(msg){
   $("toast").textContent=msg; $("toast").style.display="block"; setTimeout(()=>$("toast").style.display="none",1800);
 }
-$("yearFilter").addEventListener("change",renderAll);
+$("yearFilter").addEventListener("change", ()=>{
+  persistDashboardYearToStorage(year());
+  renderAll();
+});
 $("monthFilter").addEventListener("change",renderAll);
 if($("dateModeFilter")) $("dateModeFilter").addEventListener("change",()=>{ syncDateFilterUI(); renderAll(); });
 if($("startDateFilter")) $("startDateFilter").addEventListener("change",renderAll);
@@ -5218,6 +5480,7 @@ function trapEnterToNext(formId){
 function clearTopFilters(){
   $("dateModeFilter").value = "year";
   $("yearFilter").value = curYear();
+  persistDashboardYearToStorage(curYear());
   $("monthFilter").value = "All";
   if($("startDateFilter")) $("startDateFilter").value = today();
   if($("endDateFilter")) $("endDateFilter").value = today();
