@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Income Tracker') }}</title>
+    <title>{{ config('app.name', 'DynamiteOS') }}</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
@@ -14,7 +14,7 @@
     <div id="app" class="mx-auto max-w-5xl px-4 py-8">
       <div class="mb-6 flex flex-col gap-2">
         <div class="flex items-center justify-between gap-3">
-          <h1 class="text-2xl font-semibold tracking-tight">Income Tracker</h1>
+          <h1 class="text-2xl font-semibold tracking-tight">{{ config('app.name') }}</h1>
           <a class="text-sm text-zinc-600 underline underline-offset-4 hover:text-zinc-900" href="/">Home</a>
         </div>
         <p class="text-sm text-zinc-600">Expense Entry is now wired to the API (with optional receipt upload).</p>
